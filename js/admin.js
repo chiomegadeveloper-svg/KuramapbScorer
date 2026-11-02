@@ -17,12 +17,39 @@
       return '<tr>' +
         '<td><div class="u">' + (u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">' : '<img alt="">') +
         '<div><b>' + esc(u.full_name || '—') + (u.is_admin ? ' · admin' : '') + '</b><small>' + esc(u.email || '') + '</small></div></div></td>' +
-        '<td class="num">' + u.credits + '</td>' +
+        '<td class="num">' + (u.hours_balance || 0) + ' h</td>' +
         '<td class="' + (active ? 'pass-on' : '') + '">' + (active ? 'until ' + fmt(u.pass_until) : '—') + '</td>' +
-        '<td><div class="quick">' + [1, 5, 10].map((n) => '<button data-e="' + esc(u.email) + '" data-n="' + n + '">+' + n + '</button>').join('') + '</div></td>' +
+        '<td>' + (u.bound_device ? '<button class="mini-btn" data-reset="' + esc(u.id) + '" title="Allow this user to switch phones">Locked · reset</button>' : '<span style="color:var(--ink-3)">none</span>') + '</td>' +
+        '<td><div class="quick">' + [[24, '+1 day'], [168, '+1 wk']].map(([n, l]) => '<button data-e="' + esc(u.email) + '" data-n="' + n + '">' + l + '</button>').join('') + '</div></td>' +
         '</tr>';
-    }).join('') || '<tr><td colspan="4" style="color:var(--ink-3)">No users yet. Users appear after their first Google sign-in.</td></tr>';
-    $('rows').querySelectorAll('button[data-e]').forEach((b) => b.onclick = () => add(b.dataset.e, Number(b.dataset.n), 'Quick top-up'));
+    }).join('') || '<tr><td colspan="5" style="color:var(--ink-3)">No users yet. Users appear after their first Google sign-in.</td></tr>';
+    $('rows').querySelectorAll('button[data-e]').forEach((b) => b.onclick = () => add(b.dataset.e, Number(b.dataset.n), 'Manual hours'));
+    $('rows').querySelectorAll('button[data-reset]').forEach((b) => b.onclick = async () => {
+      if (!confirm('Reset the phone lock? The user can then sign in on a new phone.')) return;
+      try { await PBAuth.resetDevice(b.dataset.reset); msg('Phone lock reset.', 'ok'); loadAll(); } catch (e) { msg('Error: ' + e.message, 'bad'); }
+    });
+  }
+
+  async function loadPayments(byId) {
+    const pend = await PBAuth.adminPurchases('pending');
+    const recent = (await PBAuth.adminPurchases()).filter((p) => p.status !== 'pending').slice(0, 30);
+    const refCount = {};
+    pend.concat(recent).forEach((p) => { refCount[p.reference] = (refCount[p.reference] || 0) + 1; });
+    const who = (id) => esc((byId[id] && (byId[id].email)) || id.slice(0, 8));
+    $('pendCount').textContent = pend.length; $('pendCount').classList.toggle('zero', !pend.length);
+    $('pending').innerHTML = pend.map((p) => '<tr><td>' + fmt(p.created_at) + '</td><td>' + who(p.user_id) + '</td><td>' + esc(p.package) + '</td>' +
+      '<td class="num">PHP ' + p.amount_php + '</td><td><span class="ref">' + esc(p.reference) + '</span>' + (refCount[p.reference] > 1 ? '<span class="dup">same digits used before — check carefully</span>' : '') + '</td>' +
+      '<td><div class="act"><button class="ok" data-ok="' + p.id + '">Approve</button><button class="no" data-no="' + p.id + '">Reject</button></div></td></tr>').join('') ||
+      '<tr><td colspan="6" style="color:var(--ink-3)">Nothing to check right now.</td></tr>';
+    $('pending').querySelectorAll('[data-ok]').forEach((b) => b.onclick = () => review(Number(b.dataset.ok), true));
+    $('pending').querySelectorAll('[data-no]').forEach((b) => b.onclick = () => review(Number(b.dataset.no), false));
+    $('reviewed').innerHTML = recent.map((p) => '<tr><td>' + fmt(p.reviewed_at || p.created_at) + '</td><td>' + who(p.user_id) + '</td><td>' + esc(p.package) + ' · PHP ' + p.amount_php + '</td><td class="ref">' + esc(p.reference) + '</td><td class="' + (p.status === 'approved' ? 'pass-on' : '') + '" style="' + (p.status === 'rejected' ? 'color:var(--danger)' : '') + '">' + esc(p.status) + '</td></tr>').join('');
+  }
+  async function review(id, ok) {
+    const note = ok ? '' : (prompt('Reason for rejecting (optional):') || '');
+    if (ok && !confirm('Approve this payment? Only approve if you received it.')) return;
+    try { await PBAuth.reviewPurchase(id, ok, note); msg(ok ? 'Approved — time added to the user.' : 'Rejected.', ok ? 'ok' : ''); loadAll(); }
+    catch (e) { msg('Error: ' + e.message, 'bad'); }
   }
 
   async function loadAll() {
@@ -30,6 +57,7 @@
       users = await PBAuth.listUsers();
       renderUsers();
       const byId = Object.fromEntries(users.map((u) => [u.id, u]));
+      await loadPayments(byId);
       const rows = await PBAuth.ledger(40);
       $('ledger').innerHTML = rows.map((r) => '<tr><td>' + fmt(r.created_at) + '</td><td>' + esc((byId[r.user_id] && byId[r.user_id].email) || r.user_id.slice(0, 8)) + '</td>' +
         '<td class="num ' + (r.delta > 0 ? 'delta-pos' : 'delta-neg') + '">' + (r.delta > 0 ? '+' : '') + r.delta + '</td><td>' + esc(r.reason) + '</td></tr>').join('') ||
@@ -40,11 +68,11 @@
   async function add(email, amount, note) {
     email = String(email || '').trim().toLowerCase();
     if (!email) return msg('Enter the user’s Google email.', 'bad');
-    if (!Number.isInteger(amount) || amount === 0) return msg('Enter a whole number of credits (not 0).', 'bad');
+    if (!Number.isInteger(amount) || amount === 0) return msg('Enter a whole number of hours (not 0).', 'bad');
     msg('Saving…');
     try {
-      const bal = await PBAuth.addCredits(email, amount, note);
-      msg((amount > 0 ? 'Added ' + amount : 'Removed ' + -amount) + ' credit' + (Math.abs(amount) === 1 ? '' : 's') + ' · ' + email + ' now has ' + bal + '.', 'ok');
+      const bal = await PBAuth.addHours(email, amount, note);
+      msg((amount > 0 ? 'Added ' + amount : 'Removed ' + -amount) + ' hours · ' + email + ' time bank is now ' + bal + ' h.', 'ok');
       loadAll();
     } catch (e) {
       const m = e.message;
@@ -68,6 +96,7 @@
     if (!p) return;                       // still loading
     if (!p.is_admin) { $('notAdminTxt').textContent = u.email + ' does not have admin access.'; return show('notAdmin'); }
     show('panel'); loadAll();
+    if (!window._adminPoll) window._adminPoll = setInterval(loadAll, 30000);
   });
   PBAuth.init().catch((e) => { $('whoTxt').textContent = 'Error'; msg(String(e.message || e), 'bad'); });
 })();

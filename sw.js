@@ -1,10 +1,10 @@
 /* Kurama Pickleball Scorer service worker: app shell offline, CDN libs + fonts cached on first use. */
-const VERSION = 'aopb-v8';
+const VERSION = 'aopb-v11';
 const SHELL = [
   './', './index.html', './display.html', './remote.html',
   './admin.html', './css/app.css', './js/config.js', './js/auth.js', './js/admin.js', './js/common.js', './js/engine.js', './js/link.js', './js/display.js', './js/remote.js',
   './manifest.webmanifest',
-  './icons/kurama-mark.png', './icons/icon-192.png', './icons/icon-512.png'
+  './icons/kurama-mark.png', './icons/icon-192.png', './icons/icon-512.png', './icons/instapay-qr.png'
 ];
 const RUNTIME_HOSTS = ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 

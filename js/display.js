@@ -111,7 +111,7 @@
   let license = store.get('aopb.license', null); // {until, name, email}
   const verified = new Set();                     // remote ids that signed in this session
   function licensed() { return !AUTH || (license && new Date(license.until).getTime() > Date.now()); }
-  function hhmm(d) { return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+  function hhmm(d) { const t = new Date(d); const far = t - Date.now() > 20 * 3600e3; return (far ? t.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' : '') + t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
   function setPairMsg(text, kind) {
     const el = $('pairStatus'); if (!el) return;
@@ -129,7 +129,7 @@
     if (!AUTH) { verified.add(id); reply({ t: 'authok', free: true }); return; }
     setPairMsg('Checking account…');
     let res;
-    try { res = await PBAuth.verifyToken(msg.token, { charge: !licensed() }); }
+    try { res = await PBAuth.verifyToken(msg.token, { device: msg.device }); }
     catch (e) { res = { ok: false, reason: 'ERROR' }; }
     if (res.ok) {
       verified.add(id);
@@ -143,7 +143,8 @@
     } else {
       reply({ t: 'denied', reason: res.reason, email: res.email });
       const who = res.email ? res.email : 'this account';
-      if (res.reason === 'NO_CREDITS') { showDenied('Access denied', 'No credits on ' + who + '. Buy credits, then scan again.'); setPairMsg('Denied: no credits on ' + who, 'bad'); }
+      if (res.reason === 'NO_CREDITS') { showDenied('Access denied', 'No active pass on ' + who + '. Buy a pass on your phone, then scan again.'); setPairMsg('Denied: no pass on ' + who, 'bad'); }
+      else if (res.reason === 'OTHER_DEVICE') { showDenied('Access denied', who + ' is locked to another phone. Passes cannot be shared.'); setPairMsg('Denied: account locked to another phone', 'bad'); }
       else if (res.reason === 'NOT_SIGNED_IN') setPairMsg('Phone connected · waiting for Google sign-in');
       else { showDenied('Could not verify', 'Check the internet connection and try again.'); setPairMsg('Verification failed', 'bad'); }
     }
@@ -162,7 +163,7 @@
     if (AUTH && license && !licensed()) {
       license = null; store.del('aopb.license'); verified.clear();
       if (link) link.broadcastMsg({ t: 'reauth' });
-      showPair(true); setPairMsg('24-hour pass ended · scan to continue (uses 1 credit)');
+      showPair(true); setPairMsg('Pass ended · scan to continue');
     }
     renderLicense();
   }, 20000);
@@ -290,7 +291,7 @@
   /* ---------- Boot ---------- */
   if (AUTH) {
     $('pairTitle').textContent = 'Scan to sign in and start scoring';
-    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. Each sign-in starts a 24-hour pass that uses 1 credit, so buy credits before scanning.';
+    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. Buy a pass on your phone (from PHP 50 / 24 hours). One pass works on one account and one phone.';
     if (licensed()) setPairMsg('Pass active until ' + hhmm(license.until) + ' · scan to connect a phone', 'ok');
   }
   renderLicense();

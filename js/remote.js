@@ -13,6 +13,9 @@
   let authed = !AUTH;   // TV has accepted this phone's sign-in
   let gateState = null; // 'signin' | 'checking' | 'denied' | null
   let lastAuthSend = 0;
+  let device = store.get('aopb.device', null);
+  if (!device) { device = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join(''); store.set('aopb.device', device); }
+  let lastDenied = null, pollT = null;
 
   const params = new URLSearchParams(location.search);
   let code = PBLink.normCode(params.get('c') || store.get('aopb.remoteCode', ''));
@@ -77,14 +80,20 @@
     $('gateGoogle').classList.toggle('hidden', state !== 'signin');
     $('gateRetry').classList.toggle('hidden', state !== 'denied');
     $('gateSwitch').classList.toggle('hidden', state !== 'denied');
+    $('gateBuy').classList.toggle('hidden', !(state === 'denied' && opts.reason === 'NO_CREDITS'));
+    if (state === 'denied') { lastDenied = opts; refreshPending(); } else $('gatePending').classList.add('hidden');
     const p = PBAuth.profile;
     if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google. Each sign-in starts a 24-hour pass that uses 1 credit, so buy credits first.'; }
     if (state === 'checking') { $('gateTitle').textContent = 'Checking credits…'; $('gateBody').textContent = 'The scoreboard is verifying your account.'; }
     if (state === 'denied') {
-      $('gateTitle').textContent = opts.reason === 'NO_CREDITS' ? 'No credits' : 'Access denied';
+      const who = opts.email || (p && p.email) || 'This account';
+      $('gateTitle').textContent = opts.reason === 'NO_CREDITS' ? 'No active pass' : opts.reason === 'OTHER_DEVICE' ? 'Locked to another phone' : 'Access denied';
       $('gateBody').textContent = opts.reason === 'NO_CREDITS'
-        ? (opts.email || (p && p.email) || 'This account') + ' has no credits. Buy credits from Kurama, then tap Try again.'
+        ? who + ' has no scoring time left. Buy a pass — from PHP 50 for 24 hours.'
+        : opts.reason === 'OTHER_DEVICE'
+        ? who + ' is already used on another phone. Passes work on one account and one phone only. Ask the owner to reset the phone lock if you changed phones.'
         : 'The scoreboard could not verify your account. Check your internet and try again.';
+      if (opts.reason === 'OTHER_DEVICE') $('gateBody').textContent += ' Email dinkykongsupport@gmail.com.';
     }
     renderCtrl();
   }
@@ -97,13 +106,78 @@
     const token = await PBAuth.accessToken();
     if (!token) { setGate('signin'); return; }
     setGate('checking');
-    link.sendMsg({ t: 'auth', token });
+    link.sendMsg({ t: 'auth', token, device });
   }
 
   function onLinkMessage(m) {
     if (m.t === 'authok') { authed = true; setGate(null); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
     else if (m.t === 'denied') { authed = false; setGate('denied', m); buzz([80, 60, 80]); }
     else if (m.t === 'reauth' || m.t === 'needauth') { authed = false; sendAuth(); }
+  }
+
+  /* ---------- Buy a pass (InstaPay P2P, approved by the owner) ---------- */
+  let pkgList = [], chosen = null;
+  const php = (n) => 'PHP ' + Number(n).toLocaleString();
+  function shopView(v) { ['shopPick', 'shopPay', 'shopDone'].forEach((id) => $(id).classList.toggle('hidden', id !== v)); }
+  async function openShop() {
+    $('shop').classList.remove('hidden'); shopView('shopPick');
+    pkgList = await PBAuth.packages();
+    $('pkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b><small>' + k.hours + ' hours of scoring</small></button>').join('');
+    $('pkgs').querySelectorAll('.pkg').forEach((b) => b.onclick = () => choose(b.dataset.c));
+    renderMine();
+  }
+  function choose(codeP) {
+    chosen = pkgList.find((k) => k.code === codeP); if (!chosen) return;
+    $('paySum').textContent = chosen.label + ' · ' + php(chosen.price_php);
+    $('payAmt').textContent = php(chosen.price_php);
+    $('payRef').value = ''; $('payErr').textContent = ''; $('payAgree').checked = false;
+    shopView('shopPay'); setTimeout(() => $('payRef').focus(), 200);
+  }
+  $('payBack').onclick = () => shopView('shopPick');
+  $('payRef').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+  $('paySend').onclick = async () => {
+    const ref = $('payRef').value;
+    if (!$('payAgree').checked) { $('payErr').textContent = 'Please tick the box to confirm you’ve read the payment terms.'; return; }
+    if (ref.length !== 6) { $('payErr').textContent = 'Enter the last 6 digits of the reference number.'; return; }
+    $('paySend').disabled = true; $('payErr').textContent = '';
+    try {
+      await PBAuth.requestPurchase(chosen.code, ref);
+      shopView('shopDone'); buzz([30, 40, 30]); renderMine(); refreshPending(); startPoll();
+    } catch (e) {
+      const m = e.message;
+      $('payErr').textContent = m === 'BAD_REFERENCE' ? 'The reference must be 6 digits.' : m === 'DUPLICATE_REFERENCE' ? 'You already submitted this reference number.' :
+        m === 'TOO_MANY_PENDING' ? 'You have 3 payments waiting for approval. Please wait for the owner.' : m === 'NOT_SIGNED_IN' ? 'Please sign in first.' : 'Could not submit: ' + m;
+    } finally { $('paySend').disabled = false; }
+  };
+  $('shopX').onclick = () => $('shop').classList.add('hidden');
+  $('shop').addEventListener('click', (e) => { if (e.target.id === 'shop') $('shop').classList.add('hidden'); });
+  $('gateBuy').onclick = openShop;
+  $('accBuy').onclick = () => { closeSheet(); openShop(); };
+  async function renderMine() {
+    const list = await PBAuth.myPurchases();
+    $('myPurchases').innerHTML = list.length ? '<span class="eyebrow">Your payments</span>' + list.map((p) =>
+      '<div class="purchase"><span>' + esc(p.package) + ' · ' + php(p.amount_php) + ' · ref …' + esc(p.reference) + '</span><span class="st ' + esc(p.status) + '">' + esc(p.status) + '</span></div>').join('') : '';
+    return list;
+  }
+  async function refreshPending() {
+    const list = await PBAuth.myPurchases();
+    const pend = list.filter((p) => p.status === 'pending');
+    const el = $('gatePending');
+    el.classList.toggle('hidden', !pend.length || gateState !== 'denied');
+    el.textContent = pend.length ? pend.length + ' payment' + (pend.length > 1 ? 's' : '') + ' waiting for the owner’s approval (5 minutes to 2 hours). This screen will unlock by itself.' : '';
+    if (pend.length) startPoll();
+  }
+  function startPoll() {
+    if (pollT) return;
+    pollT = setInterval(async () => {
+      const p = await PBAuth.refresh();
+      const list = await renderMine();
+      if (p && (p.hours_balance > 0 || PBAuth.passActive())) {
+        clearInterval(pollT); pollT = null;
+        $('shop').classList.add('hidden'); flash('Pass approved!'); buzz([40, 60, 40]);
+        if (!authed) sendAuth(true);
+      } else if (!list.some((x) => x.status === 'pending')) { clearInterval(pollT); pollT = null; refreshPending(); }
+    }, 10000);
   }
 
   $('gateGoogle').onclick = () => PBAuth.signIn();
@@ -117,7 +191,8 @@
     if (!u) return;
     $('accName').textContent = (p && p.full_name) || u.email;
     const pass = PBAuth.passActive() ? ' · pass until ' + PBAuth.passUntil().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    $('accInfo').textContent = (p ? p.credits + (p.credits === 1 ? ' credit' : ' credits') : '…') + pass;
+    const bank = p && p.hours_balance ? p.hours_balance + ' h ready' : 'no time left';
+    $('accInfo').textContent = (p ? (PBAuth.passActive() ? '' : bank) : '…') + pass;
     const av = (p && p.avatar_url) || (u.user_metadata && u.user_metadata.avatar_url);
     if (av) $('accAvatar').src = av;
   }

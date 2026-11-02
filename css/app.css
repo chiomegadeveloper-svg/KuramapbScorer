@@ -290,3 +290,37 @@ button { font: inherit; color: inherit; }
 .brand-sm { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .2em; color: var(--ink); white-space: nowrap; }
 .brand-sm img { height: 22px; width: auto; }
 .brand-sm b { color: var(--ball); font-weight: 700; }
+
+/* Buy a pass */
+.pkgs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pkg { border: 1px solid var(--line); background: var(--navy-800); color: var(--ink); border-radius: 18px; padding: 16px 12px; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.pkg b { font-family: var(--font-score); font-weight: 400; font-size: 30px; letter-spacing: .04em; color: var(--ball); }
+.pkg span { font-size: 13px; color: var(--ink-2); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+.pkg small { font-size: 12px; color: var(--ink-3); }
+.pkg:active, .pkg:focus-visible { border-color: var(--ball); outline: none; }
+#shopPay { display: flex; flex-direction: column; gap: 14px; }
+#shopPay.hidden { display: none !important; }
+.pay-sum { display: flex; justify-content: space-between; align-items: center; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 14px; }
+.pay-steps { margin: 0; padding-left: 20px; color: var(--ink-2); font-size: 14px; line-height: 1.55; }
+.pay-steps b { color: var(--ink); }
+.pay-qr { background: #fff; border-radius: 18px; padding: 14px; align-self: center; line-height: 0; }
+.pay-qr img { width: min(62vw, 260px); height: auto; }
+.ref-input { font-size: 40px; letter-spacing: .4em; }
+.done-h { font-family: var(--font-score); font-weight: 400; font-size: 30px; margin: 4px 0 8px; color: var(--ok); letter-spacing: .05em; }
+.my-purchases { display: flex; flex-direction: column; gap: 6px; }
+.my-purchases:empty { display: none; }
+.purchase { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 10px 12px; border-radius: 12px; background: var(--navy-800); border: 1px solid var(--line); }
+.purchase .st { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 11px; }
+.st.pending { color: #ffb547; } .st.approved { color: var(--ok); } .st.rejected { color: var(--danger); }
+.pending-note { font-size: 13px; color: #ffb547; line-height: 1.5; }
+
+.disclaimer { margin-top: 14px; padding: 14px; border-radius: 14px; border: 1px solid rgba(255,181,71,.35); background: rgba(255,181,71,.06); font-size: 13px; color: var(--ink-2); line-height: 1.55; }
+.disclaimer b { color: var(--ink); }
+.disclaimer ul { margin: 6px 0 8px; padding-left: 18px; }
+.disclaimer a, .note a, .support a { color: var(--ball); display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+.agree { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+.agree input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--ball); }
+.gate .support { margin-top: 2px; }
+.overlay.denied .support-tv { font-size: 2.2vh; color: var(--ink-2); margin-top: 1vh; }
+
+.legal{font-size:1.4vh;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}.legal a{color:var(--ink-3);text-decoration:none}

@@ -37,12 +37,19 @@
   .center { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
   .center p { color: var(--ink-2); max-width: 420px; line-height: 1.5; }
   .delta-pos { color: var(--ok); } .delta-neg { color: var(--ink-2); }
+  .pill { font-family: var(--font-ui); font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: #ffb547; color: var(--navy-950); }
+  .pill.zero { background: var(--navy-700); color: var(--ink-2); }
+  .ref { font-family: ui-monospace, Menlo, monospace; font-size: 16px; font-weight: 700; letter-spacing: .12em; }
+  .dup { color: #ffb547; font-size: 11px; display: block; }
+  .act { display: flex; gap: 6px; }
+  .act button { border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  .act .ok { background: var(--ok); color: var(--navy-950); } .act .no { background: none; border: 1px solid var(--line); color: var(--danger); }
 </style>
 </head>
 <body>
 <main class="admin">
   <header>
-    <h1>PB Scorer · Credits</h1>
+    <h1>PB Scorer · Owner</h1>
     <div class="r-status" id="who" style="cursor:default"><span class="dot"></span><span id="whoTxt">Loading…</span></div>
   </header>
 
@@ -66,14 +73,26 @@
 
   <div id="panel" class="hidden" style="display:flex;flex-direction:column;gap:20px">
     <div class="card">
-      <h2>Add credits</h2>
+      <h2 style="display:flex;justify-content:space-between;align-items:center">Payments to check <span class="pill" id="pendCount">0</span></h2>
+      <p class="note" style="margin:-4px 0 12px">Players are told approval takes 5 minutes to 2 hours. Open your InstaPay / bank / e-wallet history and match the <b>amount</b> and the <b>last 6 digits</b> of the reference before approving.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>User</th><th>Package</th><th>Amount</th><th>Ref (last 6)</th><th></th></tr></thead>
+        <tbody id="pending"></tbody>
+      </table></div>
+      <details style="margin-top:12px"><summary class="note" style="cursor:pointer">Recently reviewed</summary>
+        <div class="table-wrap"><table><tbody id="reviewed"></tbody></table></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Add time manually</h2>
       <div class="topup">
         <input class="text-in" id="tEmail" type="email" placeholder="user@gmail.com" autocomplete="off">
-        <input class="text-in" id="tAmount" type="number" value="1" step="1" placeholder="Credits">
+        <input class="text-in" id="tAmount" type="number" value="24" step="1" placeholder="Hours">
         <input class="text-in" id="tNote" placeholder="Note (e.g. GCash ref)">
         <button class="big-btn" id="tGo">Add</button>
       </div>
-      <p class="note" style="margin-top:10px">1 credit = one 24-hour scoring pass. Use a negative number to remove credits. The user must have signed in once before you can top them up.</p>
+      <p class="note" style="margin-top:10px">Hours are added to the user’s time bank (24 = 1 day, 72 = 3 days, 168 = 1 week, 720 = 1 month). Negative removes hours. The user must have signed in once.</p>
       <div class="msg" id="tMsg"></div>
     </div>
 
@@ -81,7 +100,7 @@
       <h2 style="display:flex;justify-content:space-between;align-items:center">Users <button class="mini-btn" id="reload">Refresh</button></h2>
       <input class="text-in" id="search" placeholder="Search name or email" style="text-transform:none;margin-bottom:10px">
       <div class="table-wrap"><table>
-        <thead><tr><th>User</th><th>Credits</th><th>Pass</th><th>Quick add</th></tr></thead>
+        <thead><tr><th>User</th><th>Time bank</th><th>Pass</th><th>Phone</th><th>Quick add</th></tr></thead>
         <tbody id="rows"></tbody>
       </table></div>
     </div>

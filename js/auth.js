@@ -64,7 +64,7 @@
 
   // Admin helpers
   async function listUsers() {
-    const { data, error } = await sb.from('profiles').select('id,email,full_name,avatar_url,credits,pass_until,is_admin,created_at').order('created_at', { ascending: false });
+    const { data, error } = await sb.from('profiles').select('id,email,full_name,avatar_url,credits,hours_balance,bound_device,pass_until,is_admin,created_at').order('created_at', { ascending: false });
     if (error) throw error; return data;
   }
   async function ledger(limit) {
@@ -96,15 +96,52 @@
     });
     const { data: who } = await c.auth.getUser(token);
     if (!who || !who.user) return { ok: false, reason: 'NOT_SIGNED_IN' };
-    const { data: until, error } = charge ? await c.rpc('start_day_pass') : { data: null, error: null };
+    const { data: until, error } = await c.rpc('start_pass', { p_device: (opts && opts.device) || '' });
     const uid = who && who.user ? who.user.id : null;
     const { data: prof } = uid ? await c.from('profiles').select('email,full_name,credits,pass_until').eq('id', uid).maybeSingle() : { data: null };
     if (error) {
       const m = String(error.message || '');
-      const reason = m.includes('NO_CREDITS') ? 'NO_CREDITS' : (m.includes('JWT') || m.includes('NOT_SIGNED_IN')) ? 'NOT_SIGNED_IN' : 'ERROR';
+      const reason = m.includes('NO_CREDITS') ? 'NO_CREDITS' : m.includes('OTHER_DEVICE') ? 'OTHER_DEVICE' : (m.includes('JWT') || m.includes('NOT_SIGNED_IN')) ? 'NOT_SIGNED_IN' : 'ERROR';
       return { ok: false, reason, email: prof && prof.email, name: prof && prof.full_name };
     }
     return { ok: true, until, email: prof && prof.email, name: prof && prof.full_name, credits: prof && prof.credits };
+  }
+
+  // ---- Packages & payments ----
+  const FALLBACK_PACKAGES = [
+    { code: 'day', label: '24 hours', hours: 24, price_php: 50 }, { code: '3day', label: '3 days', hours: 72, price_php: 150 },
+    { code: 'week', label: '1 week', hours: 168, price_php: 300 }, { code: 'month', label: '1 month', hours: 720, price_php: 800 }];
+  async function packages() {
+    if (!sb) return FALLBACK_PACKAGES;
+    const { data, error } = await sb.from('packages').select('code,label,hours,price_php').order('sort');
+    return (!error && data && data.length) ? data : FALLBACK_PACKAGES;
+  }
+  function errCode(e) { const m = String((e && e.message) || e || ''); const k = m.match(/[A-Z_]{6,}/); return k ? k[0] : m; }
+  async function requestPurchase(pkg, ref) {
+    const { data, error } = await sb.rpc('request_purchase', { p_package: pkg, p_reference: ref });
+    if (error) throw new Error(errCode(error)); return data;
+  }
+  async function myPurchases() {
+    if (!sb || !user) return [];
+    const { data } = await sb.from('purchases').select('id,package,amount_php,reference,status,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10);
+    return data || [];
+  }
+  async function adminPurchases(status) {
+    let q = sb.from('purchases').select('id,user_id,package,hours,amount_php,reference,status,created_at,reviewed_at,note').order('created_at', { ascending: status === 'pending' }).limit(100);
+    if (status) q = q.eq('status', status);
+    const { data, error } = await q; if (error) throw error; return data;
+  }
+  async function reviewPurchase(id, approve, note) {
+    const { data, error } = await sb.rpc('admin_review_purchase', { p_id: id, p_approve: approve, p_note: note || null });
+    if (error) throw new Error(errCode(error)); return data;
+  }
+  async function addHours(email, hours, note) {
+    const { data, error } = await sb.rpc('admin_add_hours', { target_email: email, p_hours: hours, note: note || null });
+    if (error) throw new Error(errCode(error)); return data;
+  }
+  async function resetDevice(uid) {
+    const { error } = await sb.rpc('admin_reset_device', { target: uid });
+    if (error) throw new Error(errCode(error));
   }
 
   // Free mode counts as "allowed"
@@ -112,7 +149,7 @@
 
   const api = {
     enabled, init, refresh, signIn, signOut, startPass, passActive, passUntil, allowed, accessToken, verifyToken,
-    listUsers, ledger, addCredits,
+    listUsers, ledger, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
     get user() { return user; }, get profile() { return profile; },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); }
   };
