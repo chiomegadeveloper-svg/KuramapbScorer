@@ -128,5 +128,13 @@
     });
   }
 
-  window.PBCommon = { seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
+  /* Donation confirmation hours: 8:00 AM – 10:00 PM, Philippine time */
+  const HOURS = { open: 8, close: 22, label: '8:00 AM – 10:00 PM' };
+  function phHour() {
+    try { return Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Asia/Manila' }).format(new Date())) % 24; }
+    catch (e) { return (new Date().getUTCHours() + 8) % 24; }
+  }
+  const approvalOpen = () => { const h = phHour(); return h >= HOURS.open && h < HOURS.close; };
+
+  window.PBCommon = { HOURS, approvalOpen, seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
 })();

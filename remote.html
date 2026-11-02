@@ -59,6 +59,7 @@
         <p>Your donation goes to the <b>support fund</b>, which pays the app’s bills for <b>storage, domain and database</b>. Help this app grow and keep it online. As our thank-you, every donation unlocks scoring time.</p>
       </div>
       <div class="pkgs hidden" id="gatePkgs"></div>
+      <p class="hours-line hidden" id="gateHours"></p>
       <button class="mini-btn hidden" id="gateAlready" style="align-self:center">Already donated? Check again</button>
       <div class="pending-note hidden" id="gatePending"></div>
       <button class="big-btn hidden" id="gateRetry">Try again</button>
@@ -131,12 +132,13 @@
         <p>DinkyKong PB Scorer is built and run by one independent developer. Your donation goes to the <b>support fund</b>, which pays the app’s bills for <b>storage, domain and database</b>. Help this app grow and keep it online. As our thank-you, every donation unlocks scoring time.</p>
       </div>
       <p class="note" style="margin-bottom:12px">Pick a donation below. Scoring time works on <b>this Google account and this phone only</b> and starts when you first scan a scoreboard.</p>
+      <div class="hours-banner" id="shopHours"></div>
       <div class="pkgs" id="pkgs"></div>
       <div class="disclaimer">
         <b>How it works</b>
         <ul>
           <li>Send your donation with the InstaPay QR, then enter the last 6 digits of the reference number.</li>
-          <li>The developer confirms each donation by hand. Your time unlocks within <b>5 minutes to 2 hours</b>.</li>
+          <li>The developer confirms each donation by hand, <b>daily from 8:00 AM to 10:00 PM</b> (PH time). Within those hours your time unlocks in <b>5 minutes to 2 hours</b>. Donations sent after 10:00 PM are confirmed the next morning from 8:00 AM.</li>
           <li>Scoring time stays with one Google account and one phone. It can’t be shared or moved.</li>
         </ul>
         Questions? Contact the developer at <a href="mailto:dinkykongsupport@gmail.com">dinkykongsupport@gmail.com</a>
@@ -157,7 +159,7 @@
     </section>
     <section id="shopDone" class="hidden" style="text-align:center">
       <h3 class="done-h">Thank you for your support! 💛</h3>
-      <p class="note">The developer will confirm your donation and unlock your scoring time within <b>5 minutes to 2 hours</b>. This screen updates by itself — keep it open, or come back later.</p>
+      <p class="note" id="doneNote">The developer will confirm your donation and unlock your scoring time within <b>5 minutes to 2 hours</b>. This screen updates by itself — keep it open, or come back later.</p>
       <p class="note">Concerns? <a href="mailto:dinkykongsupport@gmail.com">dinkykongsupport@gmail.com</a></p>
     </section>
     <div class="my-purchases" id="myPurchases"></div>

@@ -139,6 +139,18 @@
     let res;
     try { res = await PBAuth.verifyToken(msg.token, { device: msg.device }); }
     catch (e) { res = { ok: false, reason: 'ERROR' }; }
+    if (msg.silent) {   // periodic re-check: keep playing quietly, or end the pass if the owner undid the approval
+      if (res.ok) {
+        if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '' }; store.set('aopb.license', license); renderLicense(); }
+        reply({ t: 'authok', silent: true, until: res.until });
+      } else if (res.reason === 'NO_CREDITS') {
+        verified.delete(id);
+        if (!verified.size) { license = null; store.del('aopb.license'); renderLicense(); }
+        reply({ t: 'denied', reason: res.reason, email: res.email });
+        showDenied('Pass ended', 'The scoring time on ' + (res.email || 'this account') + ' was changed by the owner. Support DinkyKong on your phone to keep playing.');
+      }
+      return;
+    }
     if (res.ok) {
       verified.add(id);
       if (res.until) { license = { until: res.until, name: res.name || '', email: res.email || '' }; store.set('aopb.license', license); }
@@ -165,6 +177,9 @@
     if (licensed()) { el.classList.add('ok'); $('passTxt').textContent = 'Pass until ' + hhmm(license.until); }
     else { el.classList.remove('ok'); $('passTxt').textContent = 'Sign-in needed'; }
   }
+
+  // Every 5 minutes ask signed-in remotes to re-check their pass (picks up an approval the owner undid)
+  setInterval(() => { if (AUTH && link && verified.size) link.broadcastMsg({ t: 'recheck' }); }, 5 * 60 * 1000);
 
   // Pass expiry: lock the board and ask remotes to sign in again (another credit is used).
   setInterval(() => {

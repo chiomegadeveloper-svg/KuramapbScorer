@@ -67,6 +67,12 @@
     const { data, error } = await sb.from('profiles').select('id,email,full_name,avatar_url,credits,hours_balance,bound_device,pass_until,is_admin,created_at').order('created_at', { ascending: false });
     if (error) throw error; return data;
   }
+  async function ledgerPage(page, size) {
+    const from = page * size;
+    const { data, error, count } = await sb.from('credit_ledger').select('id,user_id,delta,reason,created_at', { count: 'exact' })
+      .order('created_at', { ascending: false }).range(from, from + size - 1);
+    if (error) throw error; return { rows: data, total: count || 0 };
+  }
   async function ledger(limit) {
     const { data, error } = await sb.from('credit_ledger').select('id,user_id,delta,reason,created_at').order('created_at', { ascending: false }).limit(limit || 50);
     if (error) throw error; return data;
@@ -156,7 +162,8 @@
     },
     async deletePush(endpoint) { await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }); },
     get client() { return sb; },
-    listUsers, ledger, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
+    async undoApproval(id) { const { data, error } = await sb.rpc('admin_undo_approval', { p_id: id }); if (error) throw new Error(error.message); return data; },
+    listUsers, ledger, ledgerPage, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
     get user() { return user; }, get profile() { return profile; },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); }
   };

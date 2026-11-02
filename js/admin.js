@@ -2,6 +2,20 @@
   const $ = (id) => document.getElementById(id);
   const { esc } = PBCommon;
   let users = [];
+  const PER_PAGE = 20;
+  let userPage = 0, ledgerPageNo = 0, byIdCache = {};
+  // Pager: « Prev  1 2 … 5  Next »  ·  "21–40 of 87"
+  function renderPager(el, page, total, label, go) {
+    const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+    if (total <= PER_PAGE) { el.innerHTML = total ? '<span class="pg-info">' + total + ' ' + label + '</span>' : ''; return; }
+    const nums = [];
+    for (let i = 0; i < pages; i++) if (i === 0 || i === pages - 1 || Math.abs(i - page) <= 1) nums.push(i); else if (nums[nums.length - 1] !== '…') nums.push('…');
+    el.innerHTML = '<span class="pg-info">' + (page * PER_PAGE + 1) + '–' + Math.min(total, (page + 1) * PER_PAGE) + ' of ' + total + ' ' + label + '</span>' +
+      '<div class="pg-btns"><button class="pg-num" data-p="' + (page - 1) + '"' + (page === 0 ? ' disabled' : '') + ' aria-label="Previous page">‹</button>' +
+      nums.map((n) => n === '…' ? '<span class="pg-gap">…</span>' : '<button class="pg-num' + (n === page ? ' on' : '') + '" data-p="' + n + '">' + (n + 1) + '</button>').join('') +
+      '<button class="pg-num" data-p="' + (page + 1) + '"' + (page >= pages - 1 ? ' disabled' : '') + ' aria-label="Next page">›</button></div>';
+    el.querySelectorAll('button[data-p]').forEach((b) => b.onclick = () => go(Number(b.dataset.p)));
+  }
 
   function show(id) {
     ['needLogin', 'notAdmin', 'notConfigured', 'panel'].forEach((k) => $(k).classList.toggle('hidden', k !== id));
@@ -16,7 +30,11 @@
   }
   function renderUsers() {
     const q = $('search').value.trim().toLowerCase();
-    const list = users.filter((u) => !q || (u.email || '').includes(q) || (u.full_name || '').toLowerCase().includes(q));
+    const all = users.filter((u) => !q || (u.email || '').includes(q) || (u.full_name || '').toLowerCase().includes(q));
+    const pages = Math.max(1, Math.ceil(all.length / PER_PAGE));
+    if (userPage > pages - 1) userPage = pages - 1;
+    const list = all.slice(userPage * PER_PAGE, (userPage + 1) * PER_PAGE);
+    renderPager($('usersPager'), userPage, all.length, all.length === 1 ? 'user' : 'users', (p) => { userPage = p; renderUsers(); $('rows').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     $('rows').innerHTML = list.map((u) => {
       const active = u.pass_until && new Date(u.pass_until) > new Date();
       return '<tr>' +
@@ -51,14 +69,49 @@
     labelCells('pending');
     $('pending').querySelectorAll('[data-ok]').forEach((b) => b.onclick = () => review(Number(b.dataset.ok), true));
     $('pending').querySelectorAll('[data-no]').forEach((b) => b.onclick = () => review(Number(b.dataset.no), false));
-    $('reviewed').innerHTML = recent.map((p) => '<tr><td>' + fmt(p.reviewed_at || p.created_at) + '</td><td>' + who(p.user_id) + '</td><td>' + esc(p.package) + ' · PHP ' + p.amount_php + '</td><td class="ref">' + esc(p.reference) + '</td><td class="' + (p.status === 'approved' ? 'pass-on' : '') + '" style="' + (p.status === 'rejected' ? 'color:var(--danger)' : '') + '">' + esc(p.status) + '</td></tr>').join('');
+    $('reviewed').innerHTML = recent.map((p) => '<tr><td>' + fmt(p.reviewed_at || p.created_at) + '</td><td>' + who(p.user_id) + '</td><td>' + esc(p.package) + ' · PHP ' + p.amount_php + '</td><td class="ref">' + esc(p.reference) + '</td><td class="' + (p.status === 'approved' ? 'pass-on' : '') + '" style="' + (p.status === 'rejected' ? 'color:var(--danger)' : '') + '">' + esc(p.status) + '</td>' +
+      '<td>' + (p.status === 'approved' ? '<button class="undo-btn" data-undo="' + p.id + '" title="Take the hours back and return this donation to “Donations to confirm”">Undo</button>' : '') + '</td></tr>').join('');
+    $('reviewed').querySelectorAll('[data-undo]').forEach((b) => b.onclick = () => undoApproval(Number(b.dataset.undo)));
     labelCells('reviewed');
   }
   async function review(id, ok) {
     const note = ok ? '' : (prompt('Reason for rejecting (optional):') || '');
     if (ok && !confirm('Confirm this donation? Only approve if you received it.')) return;
-    try { await PBAuth.reviewPurchase(id, ok, note); msg(ok ? 'Approved — time added to the user.' : 'Rejected.', ok ? 'ok' : ''); loadAll(); }
+    try {
+      await PBAuth.reviewPurchase(id, ok, note);
+      payMsg(ok ? '✅ Approved — the hours were added to the player’s time bank. Approved the wrong one?' : 'Rejected.', ok ? '' : 'warn', ok ? id : null);
+      loadAll();
+    }
     catch (e) { msg('Error: ' + e.message, 'bad'); }
+  }
+
+  // Result banner under "Donations to confirm", with an Undo button right after an approval
+  function payMsg(text, kind, undoId) {
+    const el = $('pMsg'); el.className = 'pay-msg ' + (kind || '');
+    el.innerHTML = '<span>' + esc(text) + '</span>' + (undoId ? '<button class="undo-btn" id="pUndo">Undo approval</button>' : '');
+    if (undoId) $('pUndo').onclick = () => undoApproval(undoId);
+    clearTimeout(payMsg.t); payMsg.t = setTimeout(() => el.classList.add('hidden'), undoId ? 60000 : 15000);
+  }
+  async function undoApproval(id) {
+    if (!confirm('Undo this approval?\n\n• The hours are taken back — first from the player’s unused time, then from their running pass (it gets shorter or ends now).\n• The donation goes back to “Donations to confirm” so you can check it again, then approve or reject it.\n• Time the player has already played can’t be taken back.')) return;
+    try {
+      const r = await PBAuth.undoApproval(id);
+      const took = r.from_bank + r.from_pass;
+      let t = '↩️ Approval undone — took back ' + took + ' of ' + r.hours + ' h';
+      const parts = [];
+      if (r.from_bank) parts.push(r.from_bank + ' h unused');
+      if (r.from_pass) parts.push(r.from_pass + ' h from the running pass' + (r.pass_ended ? ', which has now ended' : ', which now ends ' + fmt(r.pass_until)));
+      if (parts.length) t += ': ' + parts.join(' and ');
+      t += '.';
+      if (r.used) t += ' ' + r.used + ' h were already played and can’t be taken back.';
+      t += ' The donation is back in “Donations to confirm”. A scoreboard in use picks this up within 5 minutes.';
+      payMsg(t, r.used ? 'warn' : '');
+      lastPending = null;   // the donation coming back to the list is not a new donation
+      loadAll();
+    } catch (e) {
+      payMsg(e.message === 'NOT_APPROVED' ? 'This donation is no longer approved — nothing to undo.' : 'Could not undo: ' + e.message, 'bad');
+      loadAll();
+    }
   }
 
   async function loadAll() {
@@ -67,7 +120,17 @@
       renderUsers();
       const byId = Object.fromEntries(users.map((u) => [u.id, u]));
       await loadPayments(byId);
-      const rows = await PBAuth.ledger(40);
+      byIdCache = byId;
+      await loadLedger();
+    } catch (e) { msg('Could not load: ' + e.message, 'bad'); }
+  }
+
+  async function loadLedger() {
+    const byId = byIdCache;
+    try {
+      let { rows, total } = await PBAuth.ledgerPage(ledgerPageNo, PER_PAGE);
+      if (!rows.length && ledgerPageNo > 0) { ledgerPageNo = Math.max(0, Math.ceil(total / PER_PAGE) - 1); ({ rows, total } = await PBAuth.ledgerPage(ledgerPageNo, PER_PAGE)); }
+      renderPager($('ledgerPager'), ledgerPageNo, total, 'entries', (p) => { ledgerPageNo = p; loadLedger(); $('ledger').closest('.card').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       $('ledger').innerHTML = rows.map((r) => '<tr><td>' + fmt(r.created_at) + '</td><td>' + esc((byId[r.user_id] && byId[r.user_id].email) || r.user_id.slice(0, 8)) + '</td>' +
         '<td class="num ' + (r.delta > 0 ? 'delta-pos' : 'delta-neg') + '">' + (r.delta > 0 ? '+' : '') + r.delta + '</td><td>' + esc(r.reason) + '</td></tr>').join('') ||
         '<tr><td colspan="4" style="color:var(--ink-3)">No activity yet.</td></tr>';
@@ -92,7 +155,7 @@
   }
 
   $('tGo').onclick = () => add($('tEmail').value, parseInt($('tAmount').value, 10), $('tNote').value);
-  $('search').oninput = renderUsers;
+  $('search').oninput = () => { userPage = 0; renderUsers(); };
   $('reload').onclick = loadAll;
   $('loginBtn').onclick = () => PBAuth.signIn();
   $('logout').onclick = $('logout2').onclick = async () => { await PBAuth.signOut(); };
@@ -181,6 +244,15 @@
     } catch (e) { msg('Could not turn on alerts: ' + (e.message || e), 'bad'); }
     finally { $('alertBtn').disabled = false; refreshAlertCard(); }
   };
+  function renderHoursNote() {
+    const open = PBCommon.approvalOpen(), el = $('hoursNote');
+    el.classList.toggle('off', !open);
+    el.lastElementChild.innerHTML = open
+      ? 'Confirmation hours: <b>8:00 AM – 10:00 PM</b> (PH time) · open now — players expect approval in 5 minutes to 2 hours.'
+      : 'Confirmation hours: <b>8:00 AM – 10:00 PM</b> (PH time) · closed now — players are told donations sent now are confirmed after 8:00 AM.';
+  }
+  renderHoursNote(); setInterval(renderHoursNote, 60000);
+
   /* ---------- Install as an app ---------- */
   PBCommon.registerSW();
   PBCommon.installButton($('hdrInstall'), { onHelp: (h) => alert(h) });

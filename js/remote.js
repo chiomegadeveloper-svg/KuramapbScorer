@@ -94,6 +94,7 @@
     $('gatePkgs').classList.toggle('hidden', !offer);
     $('gateFund').classList.toggle('hidden', !(offer || state === 'signin'));
     $('gateAlready').classList.toggle('hidden', !offer);
+    $('gateHours').classList.toggle('hidden', !offer); if (offer) renderHours();
     $('gateMark').classList.toggle('hidden', offer);
     if (offer) renderGatePkgs();
     if (state === 'denied') { lastDenied = opts; refreshPending(); } else $('gatePending').classList.add('hidden');
@@ -122,8 +123,15 @@
     link.sendMsg({ t: 'auth', token, device });
   }
 
+  async function silentAuth() {   // quiet pass re-check requested by the scoreboard
+    if (!AUTH || !link || !connected || !PBAuth.user) return;
+    const token = await PBAuth.accessToken(); if (!token) return;
+    link.sendMsg({ t: 'auth', token, device, silent: true });
+  }
+
   function onLinkMessage(m) {
     if (leaving) return;
+    if (m.t === 'authok' && m.silent) { authed = true; return; }
     if (m.t === 'authok') { authRetries = 0; authed = true; setGate(null); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
     else if (m.t === 'denied') {
       authed = false;
@@ -131,6 +139,7 @@
       authRetries = 0; setGate('denied', m); if (m.reason === 'OTHER_DEVICE') buzz([80, 60, 80]);
     }
     else if (m.t === 'reauth' || m.t === 'needauth') { authed = false; sendAuth(); }
+    else if (m.t === 'recheck') { silentAuth(); }
     else if (m.t === 'reset') { leaveScreen(false, 'The scoreboard restarted for new players. Scan its new QR code to play again.'); }
   }
 
@@ -146,11 +155,28 @@
     setGate(null); closeSheet(); showJoin(msg || '');
   }
 
+  /* Confirmation hours (8 AM – 10 PM PH time): tell players when to expect approval */
+  function hoursText(short) {
+    const open = PBCommon.approvalOpen();
+    if (short) return open ? '🟢 Confirming donations now · ' + PBCommon.HOURS.label + ' daily' : '🌙 Donations are confirmed ' + PBCommon.HOURS.label + '. Sent now? It will be confirmed after 8:00 AM.';
+    return open ? 'Usually confirmed within 5 minutes to 2 hours (confirmations run ' + PBCommon.HOURS.label + ' daily).' : 'It’s outside confirmation hours (' + PBCommon.HOURS.label + ', PH time), so it will be confirmed after 8:00 AM.';
+  }
+  function renderHours() {
+    const open = PBCommon.approvalOpen();
+    const sh = $('shopHours'); sh.textContent = hoursText(true); sh.classList.toggle('off', !open);
+    const gh = $('gateHours'); gh.textContent = hoursText(true); gh.classList.toggle('off', !open);
+    $('doneNote').innerHTML = open
+      ? 'The developer will confirm your donation and unlock your scoring time within <b>5 minutes to 2 hours</b>. This screen updates by itself — keep it open, or come back later.'
+      : 'It’s outside confirmation hours (<b>' + PBCommon.HOURS.label + '</b>, PH time). Your donation will be confirmed <b>after 8:00 AM</b> and your scoring time unlocks then. This screen updates by itself.';
+  }
+  setInterval(renderHours, 60000);
+
   /* ---------- Support fund donation (InstaPay P2P, confirmed by the owner) ---------- */
   let pkgList = [], chosen = null;
   const php = (n) => 'PHP ' + Number(n).toLocaleString();
   function shopView(v) { ['shopPick', 'shopPay', 'shopDone'].forEach((id) => $(id).classList.toggle('hidden', id !== v)); }
   async function openShop() {
+    renderHours();
     $('shop').classList.remove('hidden'); shopView('shopPick');
     pkgList = await PBAuth.packages();
     $('pkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b><small>' + k.hours + ' hours of scoring</small></button>').join('');
@@ -177,7 +203,7 @@
     $('paySend').disabled = true; $('payErr').textContent = '';
     try {
       await PBAuth.requestPurchase(chosen.code, ref);
-      shopView('shopDone'); buzz([30, 40, 30]); renderMine(); refreshPending(); startPoll();
+      renderHours(); shopView('shopDone'); buzz([30, 40, 30]); renderMine(); refreshPending(); startPoll();
     } catch (e) {
       const m = e.message;
       $('payErr').textContent = m === 'BAD_REFERENCE' ? 'The reference must be 6 digits.' : m === 'DUPLICATE_REFERENCE' ? 'You already sent this reference number.' :
@@ -201,7 +227,7 @@
     const el = $('gatePending');
     el.classList.toggle('hidden', !pend.length || gateState !== 'denied');
     if (pend.length && gateState === 'denied') { $('gateTitle').textContent = 'Thanks! Confirming your donation'; }
-    el.textContent = pend.length ? pend.length + ' donation' + (pend.length > 1 ? 's' : '') + ' waiting to be confirmed (5 minutes to 2 hours). This screen will unlock by itself.' : '';
+    el.textContent = pend.length ? pend.length + ' donation' + (pend.length > 1 ? 's' : '') + ' waiting to be confirmed. ' + hoursText(false) + ' This screen will unlock by itself.' : '';
     if (pend.length) startPoll();
   }
   function startPoll() {
