@@ -1,6 +1,12 @@
 /* Shared helpers: script loading with CDN fallback, wake lock, SW registration, icons. */
 (function () {
+  const loading = {};   // each library loads once, even if several parts of the page ask at the same time
   function loadScript(urls) {
+    const key = urls.join('|');
+    if (!loading[key]) loading[key] = loadScriptOnce(urls).catch((e) => { delete loading[key]; throw e; });
+    return loading[key];
+  }
+  function loadScriptOnce(urls) {
     return new Promise((resolve, reject) => {
       const list = urls.slice();
       (function next() {

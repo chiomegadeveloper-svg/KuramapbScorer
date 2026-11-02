@@ -42,6 +42,10 @@
 
   <!-- Controller -->
   <section id="ctrl" class="hidden" style="display:flex;flex-direction:column;gap:12px;flex:1">
+    <div class="conn-help hidden" id="connHelp" role="alert">
+      <div><b>Can’t reach the scoreboard</b><span id="connHelpTxt">It may have restarted with a new code. Scan its QR code again.</span></div>
+      <div class="conn-help-btns"><button class="mini-btn" id="connRetry">Retry</button><button class="big-btn" id="connRescan">Scan again</button></div>
+    </div>
     <div class="r-board">
       <div class="r-side" id="bL"><div class="n"><i></i><span></span></div><div class="s">0</div><div class="g"></div></div>
       <div class="r-call"><div class="c" id="call">0-0-2</div><div class="x" id="callX">Game 1</div></div>

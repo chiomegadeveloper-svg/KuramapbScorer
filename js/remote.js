@@ -28,8 +28,11 @@
   function flash(t) { const f = $('flash'); f.textContent = t; f.classList.add('show'); clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 1400); }
 
   /* ---------- Status ---------- */
+  let downSince = Date.now();
   function setStatus(s) {
     if (leaving) return;
+    if (s === 'connected') { downSince = 0; $('connHelp').classList.add('hidden'); }
+    else if (!downSince) downSince = Date.now();
     if (s === 'connected' && !connected) setTimeout(sendAuth, 50);
     const el = $('status'), txt = $('statusTxt');
     el.classList.remove('ok', 'bad');
@@ -476,4 +479,14 @@
   PBAuth.live('p-' + device.slice(0, 12), { r: 'phone' }, () => {}).catch(() => {});
   /* Match setup: show a divider under the title once the sheet scrolls */
   (function () { const sh = document.querySelector('#sheet .sheet'); if (sh) sh.addEventListener('scroll', () => sh.classList.toggle('scrolled', sh.scrollTop > 4), { passive: true }); })();
+  /* Stuck connecting? After 15 s offer "Scan again" (the scoreboard may have restarted with a new code). */
+  setInterval(() => {
+    const show = !leaving && link && !connected && downSince && Date.now() - downSince > 15000 && !$('ctrl').classList.contains('hidden');
+    if (show) $('connHelpTxt').textContent = navigator.onLine === false
+      ? 'This phone is offline. Check Wi-Fi or mobile data, then tap Retry.'
+      : 'Scoreboard ' + code + ' isn’t answering. It may have restarted with a new code — scan its QR code again.';
+    $('connHelp').classList.toggle('hidden', !show);
+  }, 1000);
+  $('connRetry').onclick = () => { const c = code; downSince = Date.now(); $('connHelp').classList.add('hidden'); if (link) link.destroy(); link = null; join(c); };
+  $('connRescan').onclick = () => { leaveScreen(false); downSince = Date.now(); startScan(); };
 })();

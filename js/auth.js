@@ -30,13 +30,27 @@
   /* Live "who's online" presence for the lobby. Each open scoreboard / phone joins one shared channel.
    * onUpdate gets { online, boards, courts, phones, players, active }. Returns { update(state) }. */
   let liveClient = null;
-  async function live(id, state, onUpdate) {
-    if (!enabled) return null;
+  async function getLiveClient() {
     await PBCommon.loadScript(SB_URLS);
     if (!liveClient) liveClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'aopb-live' }
     });
-    const c = liveClient;
+    return liveClient;
+  }
+  /* Internet relay for the phone <-> scoreboard link (works on any network, no WebRTC needed). */
+  async function relay(name, onMsg) {
+    if (!enabled) return null;
+    const c = await getLiveClient();
+    const ch = c.channel(name, { config: { broadcast: { self: false, ack: false } } });
+    ch.on('broadcast', { event: 'm' }, (e) => { try { onMsg(e.payload); } catch (err) {} }).subscribe();
+    return {
+      send(p) { try { ch.send({ type: 'broadcast', event: 'm', payload: p }); } catch (e) {} },
+      close() { try { c.removeChannel(ch); } catch (e) {} }
+    };
+  }
+  async function live(id, state, onUpdate) {
+    if (!enabled) return null;
+    const c = await getLiveClient();
     let stats = {}, cur = state;
     const ch = c.channel('dk-online', { config: { presence: { key: id } } });
     const tally = () => {
@@ -190,7 +204,7 @@
     async deletePush(endpoint) { await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }); },
     get client() { return sb; },
     async undoApproval(id) { const { data, error } = await sb.rpc('admin_undo_approval', { p_id: id }); if (error) throw new Error(error.message); return data; },
-    live,
+    live, relay,
     listUsers, ledger, ledgerPage, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
     get user() { return user; }, get profile() { return profile; },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); }

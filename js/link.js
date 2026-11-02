@@ -1,5 +1,6 @@
 /* Device link: WebRTC data channels via PeerJS (public signalling server), plus a
- * BroadcastChannel fallback so a display and remote in two tabs of one device also work.
+ * a relay fallback (same-device BroadcastChannel + internet relay via Supabase Realtime) for networks
+ * where WebRTC can't connect (mobile data, strict routers) and for two tabs on one device.
  * Display = host (owns state). Remote = client (sends actions, receives state).
  */
 (function () {
@@ -13,6 +14,32 @@
     return c;
   }
   function normCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); }
+
+  /* Relay transport: same-device BroadcastChannel + internet relay through Supabase Realtime.
+   * Same interface as BroadcastChannel (postMessage / onmessage / close). Messages are de-duplicated. */
+  function makeRelay(code) {
+    const seen = new Map(); let handler = null, net = null, closed = false; const queue = [];
+    const bc = 'BroadcastChannel' in window ? new BroadcastChannel(PREFIX + code) : null;
+    const deliver = (m) => {
+      if (!m) return;
+      if (m.mid) { if (seen.has(m.mid)) return; seen.set(m.mid, Date.now()); if (seen.size > 400) { const cut = Date.now() - 60000; for (const [k, t] of seen) if (t < cut) seen.delete(k); } }
+      if (handler) handler({ data: m });
+    };
+    if (bc) bc.onmessage = (e) => deliver(e.data);
+    if (window.PBAuth && PBAuth.relay) PBAuth.relay('dk-link-' + code, deliver).then((r) => {
+      if (closed) { r && r.close(); return; }
+      net = r; if (net) queue.splice(0).forEach((m) => net.send(m));
+    }).catch(() => {});
+    return {
+      set onmessage(f) { handler = f; },
+      postMessage(m) {
+        m = Object.assign({ mid: Math.random().toString(36).slice(2) + Date.now().toString(36) }, m);
+        if (bc) bc.postMessage(m);
+        if (net) net.send(m); else if (queue.length < 30) queue.push(m);
+      },
+      close() { closed = true; if (bc) bc.close(); if (net) net.close(); }
+    };
+  }
 
   function peerOpts() {
     return {
@@ -29,7 +56,7 @@
   function host({ code, onAction, onMessage, onStatus, getState }) {
     const conns = new Set();
     let peer = null, failures = 0, destroyed = false;
-    const bc = 'BroadcastChannel' in window ? new BroadcastChannel(PREFIX + code) : null;
+    const bc = makeRelay(code);
 
     const status = (s, extra) => onStatus && onStatus(Object.assign({ state: s, remotes: conns.size + (bcRemotes.size), code }, extra || {}));
     const bcRemotes = new Map(); // id -> lastSeen
@@ -37,7 +64,7 @@
     function sendAll(msg) {
       const data = JSON.stringify(msg);
       for (const c of conns) { try { c.open && c.send(data); } catch (e) {} }
-      if (bc) bc.postMessage({ to: 'remote', data });
+      if (bc && bcRemotes.size) bc.postMessage({ to: 'remote', data });
     }
 
     function handle(raw, reply, id) {
@@ -111,7 +138,7 @@
   function client({ code, onState, onStatus, onMessage }) {
     const id = Math.random().toString(36).slice(2);
     let peer = null, conn = null, destroyed = false, lastMsg = 0, bcLive = false, retryT = null;
-    const bc = 'BroadcastChannel' in window ? new BroadcastChannel(PREFIX + code) : null;
+    const bc = makeRelay(code);
     const status = (s) => onStatus && onStatus(s);
 
     function onData(raw) {
@@ -121,10 +148,21 @@
       else if (m.t !== 'pong' && onMessage) onMessage(m);
     }
 
+    let relayAt = 0;
+    const peerUp = () => !!(conn && conn.open);
     if (bc) {
-      bc.onmessage = (e) => { const m = e.data; if (m && m.to === 'remote' && (!m.for || m.for === id)) { bcLive = true; onData(m.data); status('connected'); } };
+      bc.onmessage = (e) => {
+        const m = e.data; if (!m || m.to !== 'remote' || (m.for && m.for !== id)) return;
+        relayAt = Date.now(); bcLive = true;
+        if (peerUp() && !m.for) return;            // WebRTC already delivers broadcasts; avoid duplicates
+        onData(m.data); if (!peerUp()) status('connected');
+      };
       bc.postMessage({ to: 'host', from: id, data: JSON.stringify({ t: 'hello' }) });
-      setInterval(() => bc.postMessage({ to: 'host', from: id, data: JSON.stringify({ t: 'ping' }) }), 5000);
+      setInterval(() => {
+        if (destroyed) return;
+        if (bcLive && Date.now() - relayAt > 15000) { bcLive = false; if (!peerUp()) status('lost'); }
+        if (!peerUp()) bc.postMessage({ to: 'host', from: id, data: JSON.stringify({ t: bcLive ? 'ping' : 'hello' }) });
+      }, 4000);
     }
 
     function connect() {
