@@ -145,7 +145,7 @@
     } else {
       reply({ t: 'denied', reason: res.reason, email: res.email });
       const who = res.email ? res.email : 'this account';
-      if (res.reason === 'NO_CREDITS') { showDenied('Access denied', 'No active pass on ' + who + '. Buy a pass on your phone, then scan again.'); setPairMsg('Denied: no pass on ' + who, 'bad'); }
+      if (res.reason === 'NO_CREDITS') { showDenied('Access denied', 'No scoring time on ' + who + '. Support the DinkyKong fund on your phone to unlock time, then scan again.'); setPairMsg('Denied: no pass on ' + who, 'bad'); }
       else if (res.reason === 'OTHER_DEVICE') { showDenied('Access denied', who + ' is locked to another phone. Passes cannot be shared.'); setPairMsg('Denied: account locked to another phone', 'bad'); }
       else if (res.reason === 'NOT_SIGNED_IN') setPairMsg('Phone connected · waiting for Google sign-in');
       else setPairMsg('Choose a pass on your phone to start');
@@ -322,7 +322,7 @@
   /* ---------- Boot ---------- */
   if (AUTH) {
     $('pairTitle').textContent = 'Scan to sign in and start scoring';
-    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. Buy a pass on your phone (from PHP 50 / 24 hours). One pass works on one account and one phone.';
+    $('pairBody').textContent = 'Scan with your phone camera and continue with Google. A donation to the DinkyKong support fund unlocks scoring time (PHP 50 = 24 hours) on one account and one phone.';
     if (licensed()) setPairMsg('Pass active until ' + hhmm(license.until) + ' · scan to connect a phone', 'ok');
   }
   renderLicense();

@@ -446,3 +446,7 @@ button { font: inherit; color: inherit; }
 .chooser .install-pill { margin-top: -1vh; }
 .chooser .install-help { margin-top: -2vh; }
 .chooser:has(.install-help:not(.hidden)) .dk-anim { width: min(36vh, 56vw); }
+.fund-intro { margin-bottom: 12px; padding: 14px; border-radius: 14px; border: 1px solid rgba(57,255,20,.35); background: linear-gradient(135deg, rgba(57,255,20,.08), rgba(0,229,255,.06)); }
+.fund-intro > b { display: block; font-size: 15px; color: #fff; margin-bottom: 4px; }
+.fund-intro p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.fund-intro p b { color: #39ff14; }

@@ -94,14 +94,14 @@
     if (offer) renderGatePkgs();
     if (state === 'denied') { lastDenied = opts; refreshPending(); } else $('gatePending').classList.add('hidden');
     const p = PBAuth.profile;
-    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google, then choose a pass — from PHP 50 for 24 hours.'; }
+    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google, then support the DinkyKong fund — a PHP 50 donation unlocks 24 hours.'; }
     if (state === 'checking') { $('gateTitle').textContent = 'Checking your pass…'; $('gateBody').textContent = 'One moment.'; }
     if (state === 'denied') {
       const who = opts.email || (p && p.email) || 'This account';
-      $('gateTitle').textContent = locked ? 'Locked to another phone' : 'Choose a pass to start';
+      $('gateTitle').textContent = locked ? 'Locked to another phone' : 'Support DinkyKong to start';
       $('gateBody').textContent = locked
         ? who + ' is already used on another phone. Passes work on one account and one phone only. Ask the owner to reset the phone lock if you changed phones.'
-        : 'Signed in as ' + who + '. Pick a package, pay with InstaPay, and the scoreboard unlocks once the owner approves.';
+        : 'Signed in as ' + who + '. Pick a donation to the support fund, send it with InstaPay, and your scoring time unlocks once the developer confirms it.';
       if (opts.reason === 'OTHER_DEVICE') $('gateBody').textContent += ' Email dinkykongsupport@gmail.com.';
     }
     renderCtrl();
@@ -128,7 +128,7 @@
     else if (m.t === 'reauth' || m.t === 'needauth') { authed = false; sendAuth(); }
   }
 
-  /* ---------- Buy a pass (InstaPay P2P, approved by the owner) ---------- */
+  /* ---------- Support fund donation (InstaPay P2P, confirmed by the owner) ---------- */
   let pkgList = [], chosen = null;
   const php = (n) => 'PHP ' + Number(n).toLocaleString();
   function shopView(v) { ['shopPick', 'shopPay', 'shopDone'].forEach((id) => $(id).classList.toggle('hidden', id !== v)); }
@@ -148,14 +148,13 @@
     chosen = pkgList.find((k) => k.code === codeP); if (!chosen) return;
     $('paySum').textContent = chosen.label + ' · ' + php(chosen.price_php);
     $('payAmt').textContent = php(chosen.price_php);
-    $('payRef').value = ''; $('payErr').textContent = ''; $('payAgree').checked = false;
+    $('payRef').value = ''; $('payErr').textContent = '';
     shopView('shopPay'); setTimeout(() => $('payRef').focus(), 200);
   }
   $('payBack').onclick = () => shopView('shopPick');
   $('payRef').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
   $('paySend').onclick = async () => {
     const ref = $('payRef').value;
-    if (!$('payAgree').checked) { $('payErr').textContent = 'Please tick the box to confirm you’ve read the payment terms.'; return; }
     if (ref.length !== 6) { $('payErr').textContent = 'Enter the last 6 digits of the reference number.'; return; }
     $('paySend').disabled = true; $('payErr').textContent = '';
     try {
@@ -163,8 +162,8 @@
       shopView('shopDone'); buzz([30, 40, 30]); renderMine(); refreshPending(); startPoll();
     } catch (e) {
       const m = e.message;
-      $('payErr').textContent = m === 'BAD_REFERENCE' ? 'The reference must be 6 digits.' : m === 'DUPLICATE_REFERENCE' ? 'You already submitted this reference number.' :
-        m === 'TOO_MANY_PENDING' ? 'You have 3 payments waiting for approval. Please wait for the owner.' : m === 'NOT_SIGNED_IN' ? 'Please sign in first.' : 'Could not submit: ' + m;
+      $('payErr').textContent = m === 'BAD_REFERENCE' ? 'The reference must be 6 digits.' : m === 'DUPLICATE_REFERENCE' ? 'You already sent this reference number.' :
+        m === 'TOO_MANY_PENDING' ? 'You have 3 donations waiting to be confirmed. Please wait for the developer.' : m === 'NOT_SIGNED_IN' ? 'Please sign in first.' : 'Could not submit: ' + m;
     } finally { $('paySend').disabled = false; }
   };
   $('shopX').onclick = () => $('shop').classList.add('hidden');
@@ -174,7 +173,7 @@
   $('accBuy').onclick = () => { closeSheet(); openShop(); };
   async function renderMine() {
     const list = await PBAuth.myPurchases();
-    $('myPurchases').innerHTML = list.length ? '<span class="eyebrow">Your payments</span>' + list.map((p) =>
+    $('myPurchases').innerHTML = list.length ? '<span class="eyebrow">Your donations</span>' + list.map((p) =>
       '<div class="purchase"><span>' + esc(p.package) + ' · ' + php(p.amount_php) + ' · ref …' + esc(p.reference) + '</span><span class="st ' + esc(p.status) + '">' + esc(p.status) + '</span></div>').join('') : '';
     return list;
   }
@@ -183,8 +182,8 @@
     const pend = list.filter((p) => p.status === 'pending');
     const el = $('gatePending');
     el.classList.toggle('hidden', !pend.length || gateState !== 'denied');
-    if (pend.length && gateState === 'denied') { $('gateTitle').textContent = 'Payment being checked'; }
-    el.textContent = pend.length ? pend.length + ' payment' + (pend.length > 1 ? 's' : '') + ' waiting for the owner’s approval (5 minutes to 2 hours). This screen will unlock by itself.' : '';
+    if (pend.length && gateState === 'denied') { $('gateTitle').textContent = 'Thanks! Confirming your donation'; }
+    el.textContent = pend.length ? pend.length + ' donation' + (pend.length > 1 ? 's' : '') + ' waiting to be confirmed (5 minutes to 2 hours). This screen will unlock by itself.' : '';
     if (pend.length) startPoll();
   }
   function startPoll() {

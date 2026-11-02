@@ -56,7 +56,7 @@
   }
   async function review(id, ok) {
     const note = ok ? '' : (prompt('Reason for rejecting (optional):') || '');
-    if (ok && !confirm('Approve this payment? Only approve if you received it.')) return;
+    if (ok && !confirm('Confirm this donation? Only approve if you received it.')) return;
     try { await PBAuth.reviewPurchase(id, ok, note); msg(ok ? 'Approved — time added to the user.' : 'Rejected.', ok ? 'ok' : ''); loadAll(); }
     catch (e) { msg('Error: ' + e.message, 'bad'); }
   }
