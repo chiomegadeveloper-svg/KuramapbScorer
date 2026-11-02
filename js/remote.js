@@ -93,7 +93,7 @@
     $('gateBuy').classList.add('hidden');
     $('gatePkgs').classList.toggle('hidden', !offer);
     $('gateFund').classList.toggle('hidden', !(offer || state === 'signin'));
-    $('gateAlready').classList.toggle('hidden', !offer);
+    $('gateLinks').classList.toggle('hidden', !offer);
     $('gateHours').classList.toggle('hidden', !offer); if (offer) renderHours();
     $('gateMark').classList.toggle('hidden', offer);
     if (offer) renderGatePkgs();
@@ -245,7 +245,15 @@
 
   $('gateGoogle').onclick = () => PBAuth.signIn();
   $('gateRetry').onclick = async () => { await PBAuth.refresh(); sendAuth(true); };
-  $('gateSwitch').onclick = async () => { await PBAuth.signOut(); PBAuth.signIn(); };
+  // Switch to another Google account (e.g. the one that donated). Google's account picker opens.
+  const switchAccount = async () => {
+    if (!confirm('Switch to another Google account? You’ll sign out of ' + ((PBAuth.user && PBAuth.user.email) || 'this account') + ' and pick a different one.')) return;
+    flash('Switching account…'); authed = false;
+    try { await PBAuth.signOut(); } catch (e) {}
+    PBAuth.signIn();
+  };
+  $('gateSwitch').onclick = switchAccount;
+  $('gateSwitch2').onclick = switchAccount;
   $('accOut').onclick = async () => {
     if (!confirm('Sign out? The scoreboard will restart and show a new QR code for the next players.')) return;
     leaveScreen(true, 'Signed out. The scoreboard is restarting for the next players.');
