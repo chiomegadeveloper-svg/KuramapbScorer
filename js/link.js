@@ -137,9 +137,17 @@
   /* ---------------- Client (remote) ---------------- */
   function client({ code, onState, onStatus, onMessage }) {
     const id = Math.random().toString(36).slice(2);
-    let peer = null, conn = null, destroyed = false, lastMsg = 0, bcLive = false, retryT = null;
+    let peer = null, conn = null, destroyed = false, lastMsg = 0, bcLive = false, retryT = null, relayAt = 0;
+    const peerUp = () => !!(conn && conn.open);
     const bc = makeRelay(code);
-    const status = (s) => onStatus && onStatus(s);
+    // Report one combined status: "connected" while EITHER WebRTC or the relay works.
+    // WebRTC retries in the background must not flip a working relay link to "reconnecting".
+    let shown = '';
+    const status = (st) => {
+      if (st !== 'connected' && (peerUp() || bcLive)) st = 'connected';
+      if (st === shown) return;
+      shown = st; onStatus && onStatus(st);
+    };
 
     function onData(raw) {
       let m; try { m = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return; }
@@ -148,19 +156,17 @@
       else if (m.t !== 'pong' && onMessage) onMessage(m);
     }
 
-    let relayAt = 0;
-    const peerUp = () => !!(conn && conn.open);
     if (bc) {
       bc.onmessage = (e) => {
         const m = e.data; if (!m || m.to !== 'remote' || (m.for && m.for !== id)) return;
         relayAt = Date.now(); bcLive = true;
         if (peerUp() && !m.for) return;            // WebRTC already delivers broadcasts; avoid duplicates
-        onData(m.data); if (!peerUp()) status('connected');
+        onData(m.data); status('connected');
       };
       bc.postMessage({ to: 'host', from: id, data: JSON.stringify({ t: 'hello' }) });
       setInterval(() => {
         if (destroyed) return;
-        if (bcLive && Date.now() - relayAt > 15000) { bcLive = false; if (!peerUp()) status('lost'); }
+        if (bcLive && Date.now() - relayAt > 15000) { bcLive = false; status('lost'); }
         if (!peerUp()) bc.postMessage({ to: 'host', from: id, data: JSON.stringify({ t: bcLive ? 'ping' : 'hello' }) });
       }, 4000);
     }
@@ -174,13 +180,13 @@
       const timeout = setTimeout(() => { if (!thisConn.open) { try { thisConn.close(); } catch (e) {} scheduleRetry(); } }, 9000);
       conn.on('open', () => { clearTimeout(timeout); status('connected'); conn.send(JSON.stringify({ t: 'hello' })); });
       conn.on('data', onData);
-      conn.on('close', () => { if (conn === thisConn) { status('lost'); scheduleRetry(); } });
+      conn.on('close', () => { if (conn === thisConn) { if (bc) bc.postMessage({ to: 'host', from: id, data: JSON.stringify({ t: 'hello' }) }); status('lost'); scheduleRetry(); } });
       conn.on('error', () => { if (conn === thisConn) scheduleRetry(); });
     }
     function scheduleRetry() {
       if (destroyed || retryT) return;
       if (!bcLive) status('lost');
-      retryT = setTimeout(() => { retryT = null; ensurePeer(); }, 2000);
+      retryT = setTimeout(() => { retryT = null; ensurePeer(); }, bcLive ? 15000 : 2000);
     }
     function ensurePeer() {
       if (destroyed) return;
@@ -203,7 +209,7 @@
     // Keep-alive / stale detection
     setInterval(() => {
       if (conn && conn.open) { try { conn.send(JSON.stringify({ t: 'ping' })); } catch (e) {} }
-      if (lastMsg && Date.now() - lastMsg > 15000 && !bcLive) { status('lost'); try { conn && conn.close(); } catch (e) {} }
+      if (peerUp() && lastMsg && Date.now() - lastMsg > 15000) { try { conn.close(); } catch (e) {} status('lost'); }
     }, 5000);
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') { if (!conn || !conn.open) ensurePeer(); else conn.send(JSON.stringify({ t: 'sync' })); }
