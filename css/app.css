@@ -399,3 +399,88 @@ button { font: inherit; color: inherit; }
 .splash.out { opacity: 0; pointer-events: none; }
 @keyframes splashIn { from { opacity: 0; transform: scale(.85) translateY(2vh); } to { opacity: 1; transform: none; } }
 @keyframes splashBar { to { width: 100%; } }
+
+/* Device role chooser */
+.chooser { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; padding: 4vh 4vw;
+  background: radial-gradient(60% 50% at 50% 35%, #2a0f4a 0%, #0b0518 65%, #050209 100%); text-align: center; overflow-y: auto; }
+.chooser.hidden { display: none; }
+
+.chooser h1 { margin: 0; font-family: var(--font-score); font-weight: 400; letter-spacing: .08em; font-size: clamp(28px, 6vh, 64px); color: #fff; }
+.chooser-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 340px)); gap: clamp(12px, 2.4vw, 28px); width: 100%; justify-content: center; }
+.chooser-opt { display: flex; flex-direction: column; align-items: center; gap: 1vh; padding: clamp(18px, 4vh, 40px) 16px; border-radius: 24px; cursor: pointer;
+  border: 2px solid rgba(255,214,0,.25); background: rgba(255,255,255,.04); color: #fff; }
+.chooser-opt svg { width: clamp(40px, 8vh, 80px); height: auto; color: #ffd600; }
+.chooser-opt b { font-family: var(--font-score); font-weight: 400; font-size: clamp(26px, 5vh, 48px); letter-spacing: .06em; }
+.chooser-opt span { font-size: clamp(12px, 1.8vh, 16px); color: #cbbfe0; letter-spacing: .06em; }
+.chooser-opt.primary, .chooser-opt:focus-visible, .chooser-opt:hover { border-color: #ffd600; background: rgba(255,214,0,.1); outline: none; }
+.chooser-count { margin: 0; color: #cbbfe0; font-size: clamp(12px, 1.8vh, 16px); letter-spacing: .08em; }
+@media (max-width: 520px) { .chooser-opts { grid-template-columns: 1fr; } }
+/* Remote: scanner */
+.join-logo { width: 120px !important; image-rendering: pixelated; }
+.scanner { position: relative; width: 100%; max-width: 360px; aspect-ratio: 1; margin: 0 auto; border-radius: 22px; overflow: hidden; background: #000; }
+.scanner.hidden { display: none; }
+.scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-frame { position: absolute; inset: 14%; border: 3px solid #ffd600; border-radius: 18px; box-shadow: 0 0 0 999px rgba(0,0,0,.35); animation: scanPulse 1.6s ease-in-out infinite; }
+@keyframes scanPulse { 50% { border-color: #39ff14; } }
+.or { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.brand-sm img { image-rendering: pixelated; }
+
+/* Lobby: DinkyKong lifts the paddle off his shoulder, bounces the ball 3 times, puts it back — 4 s loop.
+   Logo pixel units: 1u = logo width / 640. Pivot = his fist (520, 236). */
+.dk-anim { --W: min(28vh, 42vw); --u: calc(var(--W) / 640); position: relative; width: var(--W); aspect-ratio: 640 / 613;
+  margin: 7vh calc(var(--W) * .2) 0 0; }
+.dk-logo, .dk-logo2 { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 2; }
+.dk-logo { animation: dkRestLayer 4s infinite; }
+.dk-logo2 { animation: dkActLayer 4s infinite; }
+.dk-arm { position: absolute; left: calc(520 / 640 * 100%); top: calc(236 / 613 * 100%); width: 0; height: 0;
+  transform: rotate(-160.34deg); animation: dkArm 4s infinite, dkActLayer 4s infinite; }
+.dk-back { z-index: 1; } .dk-front { z-index: 3; }
+.dk-head { position: absolute; left: 0; top: 0; width: calc(200 * var(--u)); height: calc(200 * var(--u)); image-rendering: pixelated;
+  transform-origin: 0 0; transform: translate(calc(253.6 * var(--u)), calc(-100 * var(--u))) scaleY(1); animation: dkHead 4s infinite; }
+.dk-handle { position: absolute; left: calc(-24 * var(--u)); top: calc(-10 * var(--u)); height: calc(20 * var(--u)); width: calc(298 * var(--u));
+  background: repeating-linear-gradient(90deg, #9b5fd6 0 calc(10 * var(--u)), #6a2aa6 0 calc(16 * var(--u)));
+  border: calc(4 * var(--u)) solid #180028; border-radius: calc(6 * var(--u)); box-sizing: border-box;
+  box-shadow: inset calc(10 * var(--u)) 0 0 #f8c800; animation: dkHandle 4s infinite; }
+.dk-ball { position: absolute; z-index: 4; width: calc(46 * var(--u)); height: calc(46 * var(--u));
+  left: calc(672 * var(--u)); top: calc(156 * var(--u)); background: url(../icons/pixel-ball.svg) center / contain no-repeat;
+  image-rendering: pixelated; transform-origin: 50% 100%; opacity: 0; animation: dkBall 4s infinite; }
+
+@keyframes dkRestLayer { 0%, 9.9% { opacity: 1; } 10%, 79.9% { opacity: 0; } 80%, 100% { opacity: 1; } }
+@keyframes dkActLayer  { 0%, 9.9% { opacity: 0; } 10%, 79.9% { opacity: 1; } 80%, 100% { opacity: 0; } }
+/* swing: shoulder (-160°) → over the top → flat to the side (0°), taps on each bounce, then back */
+@keyframes dkArm {
+  0%, 10% { transform: rotate(-160.34deg); animation-timing-function: cubic-bezier(.45,0,.3,1); }
+  22%   { transform: rotate(0deg); }
+  24%   { transform: rotate(-4deg); } 26% { transform: rotate(0deg); }
+  37%   { transform: rotate(-4deg); } 39% { transform: rotate(0deg); }
+  50%   { transform: rotate(-4deg); } 52% { transform: rotate(0deg); }
+  66%   { transform: rotate(0deg); animation-timing-function: cubic-bezier(.45,0,.3,1); }
+  78%, 100% { transform: rotate(-160.34deg); }
+}
+/* paddle head slides in toward the fist and tilts flat (face up) while out front */
+@keyframes dkHead {
+  0%, 10% { transform: translate(calc(253.6 * var(--u)), calc(-100 * var(--u))) scaleY(1); animation-timing-function: cubic-bezier(.45,0,.3,1); }
+  22%, 66% { transform: translate(calc(56 * var(--u)), calc(-62 * var(--u))) scale(1.3, .62); animation-timing-function: cubic-bezier(.45,0,.3,1); }
+  78%, 100% { transform: translate(calc(253.6 * var(--u)), calc(-100 * var(--u))) scaleY(1); }
+}
+@keyframes dkHandle {
+  0%, 10% { width: calc(298 * var(--u)); animation-timing-function: cubic-bezier(.45,0,.3,1); }
+  22%, 66% { width: calc(100 * var(--u)); animation-timing-function: cubic-bezier(.45,0,.3,1); }
+  78%, 100% { width: calc(298 * var(--u)); }
+}
+/* ball: appears on the flat paddle, 3 bounces with squash, settles, then is tucked away */
+@keyframes dkBall {
+  0%, 21% { opacity: 0; transform: translateY(0); }
+  22% { opacity: 1; transform: translateY(0) scale(1); }
+  24% { transform: translateY(0) scale(1.2, .8); animation-timing-function: cubic-bezier(.2,.7,.4,1); }
+  30.5% { transform: translateY(-320%) scale(1); animation-timing-function: cubic-bezier(.6,0,.8,.3); }
+  37% { transform: translateY(0) scale(1.2, .8); animation-timing-function: cubic-bezier(.2,.7,.4,1); }
+  43.5% { transform: translateY(-320%) scale(1); animation-timing-function: cubic-bezier(.6,0,.8,.3); }
+  50% { transform: translateY(0) scale(1.2, .8); animation-timing-function: cubic-bezier(.2,.7,.4,1); }
+  56.5% { transform: translateY(-320%) scale(1); animation-timing-function: cubic-bezier(.6,0,.8,.3); }
+  63% { transform: translateY(0) scale(1.1, .9); }
+  64% { opacity: 1; transform: translateY(0) scale(1); }
+  66%, 100% { opacity: 0; transform: translateY(0) scale(.6); }
+}
+@media (prefers-reduced-motion: reduce) { .dk-logo, .dk-logo2, .dk-arm, .dk-head, .dk-handle, .dk-ball { animation: none !important; } .dk-logo2, .dk-arm, .dk-ball { opacity: 0; } }

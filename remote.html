@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Kurama Pickleball Scorer — Remote</title>
+<title>DinkyKong Pickleball Scorer — Remote</title>
 <meta name="theme-color" content="#0b1228">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -21,18 +21,21 @@
 <div class="splash" data-once="1" id="splash" aria-hidden="true"><img src="icons/dinkykong-logo.png" alt="DinkyKong Pickleball Club"><div class="splash-bar"><i></i></div></div>
 <main class="remote" id="app">
   <header class="r-head">
-    <div class="brand-sm"><img src="icons/kurama-mark.png" alt=""><span>KURAMA <b>PB SCORER</b></span></div>
+    <div class="brand-sm"><img src="icons/favicon.png" alt=""><span>DINKYKONG <b>PB SCORER</b></span></div>
     <button class="r-status" id="status"><span class="dot"></span><span id="statusTxt">Not paired</span></button>
   </header>
 
   <!-- Join -->
   <section class="join hidden" id="join">
-    <img class="mark" src="icons/kurama-mark.png" alt="">
-    <h1>Pair with a screen</h1>
-    <p>Open the scorer website on your TV or tablet, then scan its QR code with your phone camera — or type the 6‑character code below.</p>
+    <img class="mark join-logo" src="icons/dinkykong-logo.png" alt="DinkyKong Pickleball Club">
+    <h1>Scan the scoreboard</h1>
+    <p>Point your camera at the QR code on the TV or tablet.</p>
+    <div class="scanner hidden" id="scanner"><video id="scanVideo" playsinline muted autoplay></video><div class="scan-frame"></div><canvas id="scanCanvas" hidden></canvas></div>
+    <button class="big-btn" id="scanBtn">Scan QR code</button>
+    <div class="or"><span>or type the 6-character code</span></div>
     <input class="code-input" id="codeIn" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" inputmode="text">
     <div class="err" id="joinErr"></div>
-    <button class="big-btn" id="joinBtn">Connect</button>
+    <button class="big-btn ghost" id="joinBtn">Connect</button>
   </section>
 
   <!-- Controller -->
@@ -104,6 +107,7 @@
     <div class="field"><span class="eyebrow">First serve</span><div class="seg" data-k="firstServer"><button data-v="0" id="fs0">A</button><button data-v="1" id="fs1">B</button></div></div>
     <div class="sheet-actions">
       <button class="big-btn ghost" id="unpair">Change screen</button>
+      <button class="big-btn ghost" id="toDisplay" style="grid-column:1/-1">Use this device as the scoreboard</button>
       <button class="big-btn" id="newMatch">Start new match</button>
     </div>
     <p class="note">Player 1 starts in the right-hand court. Names and colors update without resetting the score; “Swap court positions” fixes the scoreboard if partners lined up the other way. Starting a new match resets the score.</p>

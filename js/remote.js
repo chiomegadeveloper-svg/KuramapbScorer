@@ -18,7 +18,10 @@
   let lastDenied = null, pollT = null, authRetries = 0;
 
   const params = new URLSearchParams(location.search);
-  let code = PBLink.normCode(params.get('c') || store.get('aopb.remoteCode', ''));
+  const wantScan = params.get('scan') === '1';
+  let code = PBLink.normCode(params.get('c') || (wantScan ? '' : store.get('aopb.remoteCode', '')));
+  try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {}
+  const touch = () => { try { localStorage.setItem('aopb.remoteAt', String(Date.now())); } catch (e) {} };
 
   function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms || 18); } catch (e) {} }
   let flashT;
@@ -47,7 +50,7 @@
   function join(c) {
     code = PBLink.normCode(c);
     if (code.length !== 6) { $('joinErr').textContent = 'Codes are 6 characters.'; return; }
-    store.set('aopb.remoteCode', code);
+    store.set('aopb.remoteCode', code); touch(); stopScan();
     history.replaceState(null, '', 'remote.html?c=' + code);
     $('join').classList.add('hidden'); $('ctrl').classList.remove('hidden');
     if (link) link.destroy();
@@ -61,6 +64,7 @@
 
   /* ---------- State from display ---------- */
   function onState(s) {
+    touch();
     const prevEv = st && st.lastEvent ? st.lastEvent.t : 0;
     st = s;
     renderCtrl();
@@ -327,13 +331,61 @@
   $('setBtn').onclick = openSheet;
   $('sheetX').onclick = closeSheet;
   $('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
+  $('toDisplay').onclick = () => { try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} store.del('aopb.remoteCode'); location.href = './?role=display'; };
   $('unpair').onclick = () => { closeSheet(); if (link) link.destroy(); link = null; st = null; store.del('aopb.remoteCode'); code = ''; history.replaceState(null, '', 'remote.html'); showJoin(); };
+
+  /* ---------- QR scanner ---------- */
+  let scanStream = null, scanRaf = 0, detector = null;
+  function codeFromText(t) {
+    try { const u = new URL(t); const c = u.searchParams.get('c'); if (c) return PBLink.normCode(c); } catch (e) {}
+    const m = String(t).toUpperCase().match(/\b[A-Z0-9]{6}\b/); return m ? m[0] : '';
+  }
+  async function startScan() {
+    $('joinErr').textContent = '';
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('joinErr').textContent = 'This browser can’t open the camera. Use your camera app or type the code.'; return; }
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    } catch (e) { $('joinErr').textContent = 'Camera blocked. Allow camera access, or type the code below.'; return; }
+    const v = $('scanVideo'); v.srcObject = scanStream; await v.play().catch(() => {});
+    $('scanner').classList.remove('hidden'); $('scanBtn').textContent = 'Stop scanning';
+    if ('BarcodeDetector' in window) { try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; } }
+    if (!detector && typeof jsQR === 'undefined') { await loadScript(['https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js', 'https://unpkg.com/jsqr@1.4.0/dist/jsQR.js']).catch(() => {}); }
+    const cv = $('scanCanvas'), ctx = cv.getContext('2d', { willReadFrequently: true });
+    let busy = false;
+    const tick = async () => {
+      if (!scanStream) return;
+      if (!busy && v.readyState >= 2) {
+        busy = true;
+        try {
+          let text = '';
+          if (detector) { const r = await detector.detect(v); if (r && r[0]) text = r[0].rawValue; }
+          else if (typeof jsQR !== 'undefined') {
+            const w = v.videoWidth, h = v.videoHeight, s = Math.min(1, 640 / Math.max(w, h));
+            cv.width = w * s; cv.height = h * s; ctx.drawImage(v, 0, 0, cv.width, cv.height);
+            const img = ctx.getImageData(0, 0, cv.width, cv.height); const r = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+            if (r) text = r.data;
+          }
+          const c = text && codeFromText(text);
+          if (c && c.length === 6) { buzz([30, 40, 30]); flash('Scoreboard found'); join(c); return; }
+        } catch (e) {}
+        busy = false;
+      }
+      scanRaf = requestAnimationFrame(tick);
+    };
+    scanRaf = requestAnimationFrame(tick);
+  }
+  function stopScan() {
+    cancelAnimationFrame(scanRaf);
+    if (scanStream) { scanStream.getTracks().forEach((t) => t.stop()); scanStream = null; }
+    $('scanner').classList.add('hidden'); $('scanBtn').textContent = 'Scan QR code';
+  }
+  $('scanBtn').onclick = () => (scanStream ? stopScan() : startScan());
 
   /* ---------- Boot ---------- */
   if (code && code.length === 6) { $('ctrl').classList.remove('hidden'); setStatus('connecting'); }
   Promise.allSettled([loadScript(LIBS.peer), PBAuth.init()]).then(() => {
     renderAccount();
-    if (code && code.length === 6) join(code); else showJoin();
+    if (code && code.length === 6) join(code); else { showJoin(); if (wantScan) startScan(); }
   });
   renderCtrl();
 })();

@@ -267,6 +267,7 @@
   // Keyboard / TV-remote control
   document.addEventListener('keydown', (e) => {
     if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    if (!$('chooser').classList.contains('hidden')) return;
     const k = e.key;
     const pairOpen = !$('pairOverlay').classList.contains('hidden');
     if (pairOpen && (k === 'Escape' || k === 'Backspace')) { showPair(false); e.preventDefault(); return; }
@@ -288,6 +289,23 @@
     if (e.key === 'aopb.state' && e.newValue) { try { state = E.ensure(JSON.parse(e.newValue)); render(); } catch (err) {} }
   });
 
+  /* ---------- Device role chooser (Scoreboard is the default) ---------- */
+  (function chooser() {
+    const q = new URLSearchParams(location.search);
+    let chosen = false; try { chosen = sessionStorage.getItem('aopb.roleChosen') === 'display'; } catch (e) {}
+    if (q.get('role') === 'display' || q.get('c') || chosen) return;   // a refresh keeps the scoreboard
+    const el = $('chooser'); let left = 10, t;
+    const pickDisplay = () => { clearInterval(t); try { sessionStorage.setItem('aopb.roleChosen', 'display'); } catch (e) {} try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} el.classList.add('hidden'); keepAwake(); };
+    $('asDisplay').onclick = pickDisplay;
+    $('asRemote').onclick = () => { clearInterval(t); try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {} location.href = 'remote.html?scan=1'; };
+    el.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowDown') $('asRemote').focus(); if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') $('asDisplay').focus(); e.stopPropagation(); });
+    const start = () => {
+      el.classList.remove('hidden'); $('asDisplay').focus();
+      t = setInterval(() => { left--; $('chooserCount').textContent = 'Starting as Scoreboard in ' + left + ' s'; if (left <= 0) pickDisplay(); }, 1000);
+    };
+    setTimeout(start, document.getElementById('splash') ? 5200 : 0);
+  })();
+
   /* ---------- Boot ---------- */
   if (AUTH) {
     $('pairTitle').textContent = 'Scan to sign in and start scoring';
@@ -297,7 +315,7 @@
   renderLicense();
   render();
   drawQr();
-  showPair(true);
+  showPair(!licensed());   // after a refresh with an active pass, go straight back to the scoreboard
   keepAwake();
   Promise.allSettled([loadScript(LIBS.qr), loadScript(LIBS.peer)]).then(() => { drawQr(); startLink(); });
 })();

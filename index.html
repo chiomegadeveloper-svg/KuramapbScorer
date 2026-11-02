@@ -2,12 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+/* If this phone was being used as a remote, reopen the remote (e.g. after the app was closed by accident). */
+(function () {
+  try {
+    var q = new URLSearchParams(location.search), role = q.get('role');
+    if (role === 'display') { localStorage.setItem('aopb.role', 'display'); return; }
+    var r = localStorage.getItem('aopb.role'), c = JSON.parse(localStorage.getItem('aopb.remoteCode') || '""'), at = +localStorage.getItem('aopb.remoteAt') || 0;
+    if (r === 'remote' && c && c.length === 6 && Date.now() - at < 24 * 3600e3) location.replace('remote.html?c=' + c);
+  } catch (e) {}
+})();
+</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kurama Pickleball Scorer — Display</title>
+<title>DinkyKong Pickleball Scorer — Display</title>
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,6 +30,21 @@
 </head>
 <body>
 <div class="splash" id="splash" aria-hidden="true"><img src="icons/dinkykong-logo.png" alt="DinkyKong Pickleball Club"><div class="splash-bar"><i></i></div></div>
+<div class="chooser hidden" id="chooser" role="dialog" aria-label="Use this device as">
+  <div class="dk-anim" aria-hidden="true">
+    <div class="dk-arm dk-back"><span class="dk-handle"></span></div>
+    <img class="dk-logo" src="icons/dinkykong-logo.png" alt="">
+    <img class="dk-logo2" src="icons/dinkykong-nopaddle.png" alt="">
+    <div class="dk-arm dk-front"><img class="dk-head" src="icons/dk-paddle-head.png" alt=""></div>
+    <span class="dk-ball"></span>
+  </div>
+  <h1>Use this device as</h1>
+  <div class="chooser-opts">
+    <button class="chooser-opt primary" id="asDisplay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Scoreboard</b><span>TV · tablet · laptop</span></button>
+    <button class="chooser-opt" id="asRemote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><b>Remote</b><span>Phone · scan the scoreboard</span></button>
+  </div>
+  <p class="chooser-count" id="chooserCount">Starting as Scoreboard in 10 s</p>
+</div>
 <main class="display" id="display">
   <header class="d-top">
     <span aria-hidden="true"></span>
@@ -62,7 +89,7 @@
     <div class="pair-card">
       <div class="qr-box" id="qrBig"></div>
       <div class="pair-text">
-        <div class="eyebrow">Kurama Pickleball Scorer</div>
+        <div class="eyebrow">DinkyKong Pickleball Scorer</div>
         <h1 id="pairTitle">Scan to use your phone as the remote</h1>
         <p id="pairBody">Open your phone camera, point it at the code and tap the link. Several phones can join the same screen.</p>
         <div class="pair-status" id="pairStatus"></div>
@@ -79,7 +106,7 @@
 
   <div class="overlay denied hidden" id="deniedOverlay">
     <div class="winner">
-      <div class="eyebrow">Kurama Pickleball Scorer</div>
+      <div class="eyebrow">DinkyKong Pickleball Scorer</div>
       <h1 id="deniedTitle">Access denied</h1>
       <div class="hint" id="deniedBody"></div>
       <div class="hint support-tv">Concerns? dinkykongsupport@gmail.com</div>

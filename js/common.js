@@ -97,9 +97,9 @@
   // Splash screen: DinkyKong logo for 5 seconds, then fade out
   (function splash() {
     const el = document.getElementById('splash'); if (!el) return;
-    let seen = false; try { seen = el.dataset.once && sessionStorage.getItem('aopb.splash'); } catch (e) {}
+    let seen = false; try { seen = sessionStorage.getItem('aopb.splash'); } catch (e) {}   // once per launch, not on refresh
     if (seen) { el.remove(); return; }
-    try { if (el.dataset.once) sessionStorage.setItem('aopb.splash', '1'); } catch (e) {}
+    try { sessionStorage.setItem('aopb.splash', '1'); } catch (e) {}
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, 5000);
   })();
 
