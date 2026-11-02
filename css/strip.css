@@ -23,3 +23,7 @@
 .lt-score { font-family: 'Bebas Neue', 'Oswald', 'Arial Narrow', Impact, sans-serif; font-size: 3.6cqw; line-height: 1; min-width: 2.6cqw; text-align: right; color: var(--c); text-shadow: 0 0 1cqw color-mix(in srgb, var(--c) 60%, transparent); font-variant-numeric: tabular-nums; padding-top: .3cqw; }
 .lt-row.won .lt-name::after { content: ' ✓'; color: var(--c); }
 .lt-wait { display: grid; place-items: center; border-radius: 1cqw; background: rgba(6, 9, 20, .8); font-size: 1.6cqw; letter-spacing: .2em; color: rgba(255,255,255,.6); }
+/* Court header: room for the full letter height (fixes clipped "TO 11") */
+.lt-head { align-items: center; line-height: 1.35; padding: .3cqw .9cqw .25cqw; }
+.lt-head b, .lt-head span { display: block; line-height: 1.35; padding-top: .12em; }
+.lt-head span { color: rgba(255,255,255,.75); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

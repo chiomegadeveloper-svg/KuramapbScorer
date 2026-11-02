@@ -133,9 +133,9 @@
         : 'Signed in as ' + who + '. Pick a donation to the support fund, send it with InstaPay, and your scoring time unlocks once the developer confirms it.';
       if (opts.reason === 'OTHER_DEVICE') $('gateBody').textContent += ' Email dinkykongsupport@gmail.com.';
       if (liveEnded) { $('gateTitle').textContent = 'LIVE pass ended'; $('gateBody').textContent = 'The organizer’s LIVE pass for this screen has ended. Ask them to renew it on the LIVE screen, then tap Try again.'; }
-      else if (shopKind === 'live' && !locked) { $('gateTitle').textContent = 'Get today’s LIVE pass'; $('gateBody').textContent = 'Signed in as ' + who + '. A PHP 500 donation unlocks LIVE for 24 hours: up to 6 courts on one screen, a referee remote for every court and the OBS lower third.'; }
+      else if (shopKind === 'live' && !locked) { $('gateTitle').textContent = 'Get a LIVE pass'; $('gateBody').textContent = 'Signed in as ' + who + '. Pick how long you need LIVE — from PHP 20 per hour. It unlocks up to 6 courts on one screen, a referee remote for every court and the OBS lower third.'; }
     }
-    if (state === 'signin' && mode === 'act') { $('gateTitle').textContent = 'Organizer sign-in'; $('gateBody').textContent = 'Sign in with Google to activate LIVE on this screen. One LIVE pass (PHP 500 / day) covers every court and the OBS lower third.'; }
+    if (state === 'signin' && mode === 'act') { $('gateTitle').textContent = 'Organizer sign-in'; $('gateBody').textContent = 'Sign in with Google to activate LIVE on this screen. A LIVE pass (from PHP 20 / hour) covers every court and the OBS lower third.'; }
     renderCtrl();
   }
 
@@ -209,7 +209,7 @@
     renderHours();
     $('shop').classList.remove('hidden'); shopView('shopPick');
     pkgList = await PBAuth.packages(shopKind); pkgKind = shopKind;
-    $('pkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b><small>' + (k.kind === 'live' ? k.hours + ' h · all courts + OBS' : k.hours + ' hours of scoring') + '</small></button>').join('');
+    $('pkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b><small>' + (k.kind === 'live' ? (k.hours < 24 ? k.hours + (k.hours === 1 ? ' hour' : ' hours') : (k.hours / 24) + (k.hours === 24 ? ' day' : ' days')) + ' · all courts + OBS' : k.hours + ' hours of scoring') + '</small></button>').join('');
     $('pkgs').querySelectorAll('.pkg').forEach((b) => b.onclick = () => choose(b.dataset.c));
     renderMine();
   }

@@ -47,5 +47,5 @@ Static site, no build step, HTTPS required. Vercel: import the GitHub repo (fram
 
 ## LIVE (multi-court + OBS)
 - Lobby → **LIVE**, or open `/live.html`. Pick 2–6 courts. Each court has its own code/QR; referees scan it and score with **no sign-in**.
-- The organizer activates the screen by scanning the "Scan to activate LIVE" QR and signing in with Google. One **LIVE pass (PHP 500 / day)** — donated in the app and approved on the owner page like any other donation — unlocks every court and the OBS lower third.
+- The organizer activates the screen by scanning the "Scan to activate LIVE" QR and signing in with Google. A **LIVE pass** — PHP 20 / 1 hour, PHP 50 / 4 hours, PHP 150 / 1 day or PHP 300 / 3 days — donated in the app and approved on the owner page like any other donation — unlocks every court and the OBS lower third.
 - **OBS:** on the LIVE screen tap *OBS lower third* → copy the link → OBS *Sources → + → Browser*, Width 1920, Height 264. Transparent background, shows all active courts, updates live (via Supabase Realtime). The toggle also shows the strip on the LIVE screen itself.

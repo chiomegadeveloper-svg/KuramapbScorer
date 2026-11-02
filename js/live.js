@@ -160,7 +160,7 @@
         } else {
           reply({ t: 'denied', reason: res.reason, email: res.email, live: true });
           const who = res.email || 'this account';
-          setActMsg(res.reason === 'NO_LIVE_PASS' ? 'No LIVE pass on ' + who + ' yet — donate PHP 500 on your phone to unlock today'
+          setActMsg(res.reason === 'NO_LIVE_PASS' ? 'No LIVE pass on ' + who + ' yet — pick a LIVE pass on your phone (from PHP 20 / hour)'
             : res.reason === 'OTHER_DEVICE' ? who + ' is locked to another phone' : res.reason === 'NOT_SIGNED_IN' ? 'Phone connected · waiting for Google sign-in' : 'Could not check the pass — try again', res.reason === 'NOT_SIGNED_IN' ? '' : 'bad');
         }
       },

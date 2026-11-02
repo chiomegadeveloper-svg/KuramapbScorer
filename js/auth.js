@@ -165,7 +165,11 @@
     const { data, error } = await sb.from('packages').select('code,label,hours,price_php,kind').eq('kind', kind).order('sort');
     return (!error && data && data.length) ? data : (kind === 'live' ? LIVE_FALLBACK : FALLBACK_PACKAGES);
   }
-  const LIVE_FALLBACK = [{ code: 'live', label: 'LIVE · 1 day', hours: 24, price_php: 500, kind: 'live' }];
+  const LIVE_FALLBACK = [
+    { code: 'live1h', label: 'LIVE · 1 hour', hours: 1, price_php: 20, kind: 'live' },
+    { code: 'live4h', label: 'LIVE · 4 hours', hours: 4, price_php: 50, kind: 'live' },
+    { code: 'live', label: 'LIVE · 1 day', hours: 24, price_php: 150, kind: 'live' },
+    { code: 'live3d', label: 'LIVE · 3 days', hours: 72, price_php: 300, kind: 'live' }];
   function liveUntil() { return profile && profile.live_until ? new Date(profile.live_until) : null; }
   function errCode(e) { const m = String((e && e.message) || e || ''); const k = m.match(/[A-Z_]{6,}/); return k ? k[0] : m; }
   async function requestPurchase(pkg, ref) {
