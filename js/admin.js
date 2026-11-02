@@ -105,11 +105,85 @@
     if (!u) return show('needLogin');
     if (!p) return;                       // still loading
     if (!p.is_admin) { $('notAdminTxt').textContent = u.email + ' does not have admin access.'; return show('notAdmin'); }
-    show('panel'); loadAll();
+    show('panel'); loadAll(); refreshAlertCard(); startLive();
     if (!window._adminPoll) window._adminPoll = setInterval(loadAll, 30000);
   });
+
+  /* ---------- Donation alerts: live on this page + push to this device ---------- */
+  let lastPending = null, live = null;
+  function chime() {
+    try {
+      const A = new (window.AudioContext || window.webkitAudioContext)(); const now = A.currentTime;
+      [880, 1320].forEach((f, i) => { const o = A.createOscillator(), g = A.createGain(); o.frequency.value = f; o.type = 'sine';
+        g.gain.setValueAtTime(0.0001, now + i * .16); g.gain.exponentialRampToValueAtTime(0.25, now + i * .16 + .02); g.gain.exponentialRampToValueAtTime(0.0001, now + i * .16 + .35);
+        o.connect(g).connect(A.destination); o.start(now + i * .16); o.stop(now + i * .16 + .4); });
+    } catch (e) {}
+    try { navigator.vibrate && navigator.vibrate([120, 60, 120]); } catch (e) {}
+  }
+  function liveToast(text) {
+    const t = $('liveToast'); t.textContent = text; t.classList.remove('hidden');
+    t.onclick = () => { t.classList.add('hidden'); $('pending').scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+    clearTimeout(liveToast.t); liveToast.t = setTimeout(() => t.classList.add('hidden'), 8000);
+  }
+  function onNewDonation(p) {
+    chime();
+    liveToast('💛 New donation' + (p && p.amount_php ? ' · PHP ' + p.amount_php : '') + (p && p.reference ? ' · ref …' + p.reference : '') + ' — tap to check');
+    loadAll().then(() => { const r = $('pending').querySelector('tr:last-child'); if (r) r.classList.add('fresh'); });
+  }
+  function startLive() {
+    if (live || !PBAuth.client) return;
+    try {
+      live = PBAuth.client.channel('owner-donations')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'purchases' }, (e) => onNewDonation(e.new))
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'purchases' }, () => loadAll())
+        .subscribe();
+    } catch (e) { live = null; }
+  }
+  // Push from the service worker while the page is open (live channel may be asleep on a locked phone)
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.t === 'donation') loadAll(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && PBAuth.profile && PBAuth.profile.is_admin) loadAll(); });
+
+  const pushOK = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  function b64ToU8(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); const raw = atob(s + '='.repeat((4 - s.length % 4) % 4)); return Uint8Array.from(raw, (c) => c.charCodeAt(0)); }
+  async function currentSub() { if (!pushOK()) return null; const reg = await navigator.serviceWorker.ready; return reg.pushManager.getSubscription(); }
+  function setAlertCard(on, title, body, btn) {
+    $('alertCard').classList.toggle('on', on); $('alertTitle').textContent = title; $('alertBody').textContent = body;
+    $('alertBtn').textContent = btn; $('alertBtn').classList.toggle('ghost', on);
+  }
+  async function refreshAlertCard() {
+    if (!pushOK()) {
+      if (isIOS && !PBCommon.isStandalone()) return setAlertCard(false, 'Install the Owner app to get alerts', 'On iPhone/iPad, alerts only work from the installed app: tap Share › “Add to Home Screen”, open it from your home screen, then turn on alerts. This page still updates live while open.', 'How to install');
+      return setAlertCard(false, 'Alerts aren’t supported in this browser', 'Use Chrome or Edge (or the installed Owner app). This page still updates live with a chime while it’s open.', 'Check again');
+    }
+    if (Notification.permission === 'denied') return setAlertCard(false, 'Notifications are blocked', 'Allow notifications for dinkykong.pro in your browser or phone settings, then tap “Check again”. This page still updates live while open.', 'Check again');
+    const sub = await currentSub().catch(() => null);
+    if (sub && Notification.permission === 'granted') return setAlertCard(true, 'Donation alerts are on for this device', 'You’ll get a notification and a badge on the app icon the moment a player donates — even when this app is closed.', 'Send test alert');
+    setAlertCard(false, 'Donation alerts are off on this device', 'Turn them on to get a notification and a badge on the app icon the moment a player donates — even when this app is closed.', 'Turn on alerts');
+  }
+  $('alertBtn').onclick = async () => {
+    const label = $('alertBtn').textContent;
+    if (label === 'How to install') { alert(PBCommon.installHelp()); return; }
+    if (label === 'Check again') return refreshAlertCard();
+    if (label === 'Send test alert') {
+      const reg = await navigator.serviceWorker.ready;
+      reg.showNotification('New donation · PHP 50', { body: 'Test alert · this is how donations will look.', icon: 'icons/admin-192.png', badge: 'icons/admin-192.png', tag: 'donation-test', data: { url: '/owner/' } });
+      chime(); return;
+    }
+    try {
+      $('alertBtn').disabled = true;
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return refreshAlertCard();
+      const reg = await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(window.PB_CONFIG.vapidPublicKey) });
+      await PBAuth.savePush(sub);
+      msg('Donation alerts are on for this device.', 'ok');
+    } catch (e) { msg('Could not turn on alerts: ' + (e.message || e), 'bad'); }
+    finally { $('alertBtn').disabled = false; refreshAlertCard(); }
+  };
   /* ---------- Install as an app ---------- */
   PBCommon.registerSW();
+  PBCommon.installButton($('hdrInstall'), { onHelp: (h) => alert(h) });
   let deferredInstall = null;
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -132,6 +206,9 @@
   // Pending count on the app icon / tab title
   const baseTitle = document.title;
   window.__setPendingBadge = (n) => {
+    if (lastPending !== null && n > lastPending && !live) onNewDonation(null);   // fallback when live updates aren't running
+    lastPending = n;
+    $('bellBadge').textContent = n; $('bellBadge').classList.toggle('hidden', !n);
     document.title = n ? '(' + n + ') ' + baseTitle : baseTitle;
     try { if ('setAppBadge' in navigator) { n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch (e) {}
   };

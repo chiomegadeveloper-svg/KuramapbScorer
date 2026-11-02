@@ -46,6 +46,28 @@
   .delta-pos { color: var(--ok); } .delta-neg { color: var(--ink-2); }
   .install-bar { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(57,255,20,.35); background: rgba(57,255,20,.06); }
   .install-bar.hidden { display: none; }
+  .owner-title { display: flex; align-items: center; gap: 10px; position: relative; }
+  .owner-title img { width: 40px; height: 40px; border-radius: 10px; }
+  .bell-badge { min-width: 30px; height: 30px; padding: 0 9px; border-radius: 999px; background: #ff3b5c; color: #fff; font: 700 16px/30px 'Josefin Sans', system-ui, sans-serif; text-align: center; letter-spacing: 0; box-shadow: 0 0 0 3px rgba(255,59,92,.25); animation: bellPulse 1.6s ease-in-out infinite; }
+  .bell-badge.hidden { display: none; }
+  @keyframes bellPulse { 50% { box-shadow: 0 0 0 9px rgba(255,59,92,0); } }
+  .hdr-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .install-owner { display: inline-flex; align-items: center; gap: 6px; border-color: rgba(57,255,20,.5) !important; color: var(--ball) !important; }
+  .install-owner svg { width: 16px; height: 16px; }
+  .install-owner.hidden { display: none; }
+  .alert-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border-color: rgba(255,181,71,.45) !important; background: rgba(255,181,71,.06) !important; }
+  .alert-card.on { border-color: rgba(57,255,20,.45) !important; background: rgba(57,255,20,.05) !important; }
+  .alert-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: rgba(255,181,71,.15); color: #ffb547; }
+  .alert-card.on .alert-ic { background: rgba(57,255,20,.15); color: var(--ball); }
+  .alert-ic svg { width: 26px; height: 26px; }
+  .alert-txt b { display: block; font-size: 16px; }
+  .alert-txt span { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.45; margin-top: 2px; }
+  .alert-card .big-btn { padding: 10px 18px; font-size: 13px; white-space: nowrap; }
+  .live-toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); z-index: 50; max-width: calc(100vw - 24px); padding: 14px 20px; border-radius: 16px; background: #39ff14; color: #071006; font-weight: 700; box-shadow: 0 16px 40px rgba(0,0,0,.45); cursor: pointer; }
+  .live-toast.hidden { display: none; }
+  #pending tr.fresh td { animation: freshRow 2.4s ease-out; }
+  @keyframes freshRow { from { background: rgba(57,255,20,.25); } to { background: transparent; } }
+  @media (max-width: 640px) { .alert-card { grid-template-columns: auto 1fr; } .alert-card .big-btn { grid-column: 1 / -1; } }
   .install-bar img { width: 44px; height: 44px; border-radius: 12px; }
   .install-bar b { display: block; font-size: 15px; }
   .install-bar span { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.4; }
@@ -81,9 +103,13 @@
 <body>
 <main class="admin">
   <header>
-    <h1>PB Scorer · Owner</h1>
-    <div class="r-status" id="who" style="cursor:default"><span class="dot"></span><span id="whoTxt">Loading…</span></div>
+    <h1 class="owner-title"><img src="icons/admin-192.png" alt="">DinkyKong · Owner <span class="bell-badge hidden" id="bellBadge">0</span></h1>
+    <div class="hdr-actions">
+      <button class="mini-btn install-owner hidden" id="hdrInstall"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Install Owner app</button>
+      <div class="r-status" id="who" style="cursor:default"><span class="dot"></span><span id="whoTxt">Loading…</span></div>
+    </div>
   </header>
+  <div class="live-toast hidden" id="liveToast"></div>
 
   <div class="install-bar hidden" id="installBar">
     <img src="icons/admin-192.png" alt="">
@@ -111,6 +137,11 @@
   </section>
 
   <div id="panel" class="hidden" style="display:flex;flex-direction:column;gap:20px">
+    <div class="card alert-card" id="alertCard">
+      <div class="alert-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+      <div class="alert-txt"><b id="alertTitle">Donation alerts are off on this device</b><span id="alertBody">Turn them on to get a notification and a badge on the app icon the moment a player donates — even when this app is closed.</span></div>
+      <button class="big-btn" id="alertBtn">Turn on alerts</button>
+    </div>
     <div class="card">
       <h2 style="display:flex;justify-content:space-between;align-items:center">Donations to confirm <span class="pill" id="pendCount">0</span></h2>
       <p class="note" style="margin:-4px 0 12px">Players are told approval takes 5 minutes to 2 hours. Open your InstaPay / bank / e-wallet history and match the <b>amount</b> and the <b>last 6 digits</b> of the reference before approving.</p>

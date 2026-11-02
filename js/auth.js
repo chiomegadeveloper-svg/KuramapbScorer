@@ -149,6 +149,13 @@
 
   const api = {
     enabled, init, refresh, signIn, signOut, startPass, passActive, passUntil, allowed, accessToken, verifyToken,
+    async savePush(sub) {
+      const j = sub.toJSON();
+      const { error } = await sb.rpc('save_push_subscription', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+      if (error) throw error;
+    },
+    async deletePush(endpoint) { await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }); },
+    get client() { return sb; },
     listUsers, ledger, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
     get user() { return user; }, get profile() { return profile; },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); }
