@@ -1,5 +1,5 @@
 /* Kurama Pickleball Scorer service worker: app shell offline, CDN libs + fonts cached on first use. */
-const VERSION = 'aopb-v38';
+const VERSION = 'aopb-v39';
 const SHELL = [
   './', './index.html', './display.html', './remote.html',
   './admin.html', './owner/', './owner/index.html', './css/app.css', './js/config.js', './js/auth.js', './js/admin.js', './js/common.js', './js/engine.js', './js/link.js', './js/display.js', './js/remote.js',

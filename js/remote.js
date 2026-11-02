@@ -248,9 +248,11 @@
   // Switch to another Google account (e.g. the one that donated). Google's account picker opens.
   const switchAccount = async () => {
     if (!confirm('Switch to another Google account? You’ll sign out of ' + ((PBAuth.user && PBAuth.user.email) || 'this account') + ' and pick a different one.')) return;
-    flash('Switching account…'); authed = false;
+    flash('Switching account…');
+    try { sessionStorage.setItem('aopb.switched', '1'); } catch (e) {}
+    leaveScreen(false);                       // disconnect from this scoreboard (it stays on its QR page)
     try { await PBAuth.signOut(); } catch (e) {}
-    PBAuth.signIn();
+    PBAuth.signIn('remote.html?scan=1');      // after picking the account, come back to the QR scanner
   };
   $('gateSwitch').onclick = switchAccount;
   $('gateSwitch2').onclick = switchAccount;
@@ -455,7 +457,16 @@
   if (code && code.length === 6) { $('ctrl').classList.remove('hidden'); setStatus('connecting'); }
   Promise.allSettled([loadScript(LIBS.peer), PBAuth.init()]).then(() => {
     renderAccount();
-    if (code && code.length === 6) join(code); else { showJoin(); if (wantScan) startScan(); }
+    let switched = false; try { switched = sessionStorage.getItem('aopb.switched') === '1'; sessionStorage.removeItem('aopb.switched'); } catch (e) {}
+    if (code && code.length === 6) join(code);
+    else {
+      showJoin();
+      if (switched) {
+        $('joinTitle').textContent = 'Scan again to continue';
+        $('joinHint').innerHTML = 'Account switched' + (PBAuth.user && PBAuth.user.email ? ' to <b>' + esc(PBAuth.user.email) + '</b>' : '') + '. Point your camera at the scoreboard QR.';
+      }
+      if (wantScan || switched) startScan();
+    }
   });
   renderCtrl();
   /* Install the remote as an app on this phone */

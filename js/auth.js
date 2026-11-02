@@ -66,11 +66,11 @@
     return profile;
   }
 
-  function signIn() {
+  function signIn(returnTo) {
     if (!sb) return;
     return sb.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: location.href, queryParams: { prompt: 'select_account' } }
+      options: { redirectTo: returnTo ? new URL(returnTo, location.href).href : location.href, queryParams: { prompt: 'select_account' } }
     });
   }
   async function signOut() { if (sb) await sb.auth.signOut(); user = null; profile = null; emit(); }
