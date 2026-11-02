@@ -151,5 +151,8 @@
     return parts.join('<i>·</i>');
   }
 
-  window.PBCommon = { liveText, HOURS, approvalOpen, seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
+  // LIVE trial codes are shown as DK-XXXX-XXXX
+  const fmtTrial = (c) => { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return c.length === 10 ? c.slice(0, 2) + '-' + c.slice(2, 6) + '-' + c.slice(6) : c; };
+
+  window.PBCommon = { fmtTrial, liveText, HOURS, approvalOpen, seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
 })();

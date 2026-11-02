@@ -105,7 +105,7 @@
 
   // Admin helpers
   async function listUsers() {
-    const { data, error } = await sb.from('profiles').select('id,email,full_name,avatar_url,credits,hours_balance,bound_device,pass_until,is_admin,created_at').order('created_at', { ascending: false });
+    const { data, error } = await sb.from('profiles').select('id,email,full_name,avatar_url,credits,hours_balance,bound_device,pass_until,live_hours,live_until,is_admin,created_at').order('created_at', { ascending: false });
     if (error) throw error; return data;
   }
   async function ledgerPage(page, size) {
@@ -143,12 +143,13 @@
     });
     const { data: who } = await c.auth.getUser(token);
     if (!who || !who.user) return { ok: false, reason: 'NOT_SIGNED_IN' };
-    const { data: until, error } = await c.rpc('start_pass', { p_device: (opts && opts.device) || '' });
+    const live = !!(opts && opts.live);   // LIVE screen: start the organizer's LIVE pass instead of the solo pass
+    const { data: until, error } = await c.rpc(live ? 'start_live_pass' : 'start_pass', { p_device: (opts && opts.device) || '' });
     const uid = who && who.user ? who.user.id : null;
     const { data: prof } = uid ? await c.from('profiles').select('email,full_name,credits,pass_until').eq('id', uid).maybeSingle() : { data: null };
     if (error) {
       const m = String(error.message || '');
-      const reason = m.includes('NO_CREDITS') ? 'NO_CREDITS' : m.includes('OTHER_DEVICE') ? 'OTHER_DEVICE' : (m.includes('JWT') || m.includes('NOT_SIGNED_IN')) ? 'NOT_SIGNED_IN' : 'ERROR';
+      const reason = m.includes('NO_LIVE_PASS') ? 'NO_LIVE_PASS' : m.includes('NO_CREDITS') ? 'NO_CREDITS' : m.includes('OTHER_DEVICE') ? 'OTHER_DEVICE' : (m.includes('JWT') || m.includes('NOT_SIGNED_IN')) ? 'NOT_SIGNED_IN' : 'ERROR';
       return { ok: false, reason, email: prof && prof.email, name: prof && prof.full_name };
     }
     return { ok: true, until, email: prof && prof.email, name: prof && prof.full_name, credits: prof && prof.credits };
@@ -158,11 +159,14 @@
   const FALLBACK_PACKAGES = [
     { code: 'day', label: '24 hours', hours: 24, price_php: 50 }, { code: '3day', label: '3 days', hours: 72, price_php: 150 },
     { code: 'week', label: '1 week', hours: 168, price_php: 300 }, { code: 'month', label: '1 month', hours: 720, price_php: 800 }];
-  async function packages() {
-    if (!sb) return FALLBACK_PACKAGES;
-    const { data, error } = await sb.from('packages').select('code,label,hours,price_php').order('sort');
-    return (!error && data && data.length) ? data : FALLBACK_PACKAGES;
+  async function packages(kind) {   // 'solo' (default) or 'live'
+    kind = kind || 'solo';
+    if (!sb) return kind === 'live' ? LIVE_FALLBACK : FALLBACK_PACKAGES;
+    const { data, error } = await sb.from('packages').select('code,label,hours,price_php,kind').eq('kind', kind).order('sort');
+    return (!error && data && data.length) ? data : (kind === 'live' ? LIVE_FALLBACK : FALLBACK_PACKAGES);
   }
+  const LIVE_FALLBACK = [{ code: 'live', label: 'LIVE · 1 day', hours: 24, price_php: 500, kind: 'live' }];
+  function liveUntil() { return profile && profile.live_until ? new Date(profile.live_until) : null; }
   function errCode(e) { const m = String((e && e.message) || e || ''); const k = m.match(/[A-Z_]{6,}/); return k ? k[0] : m; }
   async function requestPurchase(pkg, ref) {
     const { data, error } = await sb.rpc('request_purchase', { p_package: pkg, p_reference: ref });
@@ -204,7 +208,18 @@
     async deletePush(endpoint) { await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }); },
     get client() { return sb; },
     async undoApproval(id) { const { data, error } = await sb.rpc('admin_undo_approval', { p_id: id }); if (error) throw new Error(error.message); return data; },
-    live, relay,
+    live, relay, liveUntil,
+    // LIVE trial codes
+    async redeemLiveCode(code, screen) {
+      if (!enabled) return { ok: true, until: new Date(Date.now() + 3600e3).toISOString() };
+      const c = await getLiveClient();
+      const { data, error } = await c.rpc('redeem_live_code', { p_code: code, p_screen: screen });
+      if (error) { const m = String(error.message || ''); return { ok: false, reason: (m.match(/BAD_CODE|USED_CODE|EXPIRED_CODE/) || ['ERROR'])[0] }; }
+      return { ok: true, until: data };
+    },
+    async createLiveCode(note) { const { data, error } = await sb.rpc('admin_create_live_code', { p_note: note || null }); if (error) throw new Error(error.message); return data; },
+    async listLiveCodes() { const { data, error } = await sb.from('live_codes').select('code,note,minutes,created_at,expires_at,redeemed_at,revoked').order('created_at', { ascending: false }).limit(30); if (error) throw error; return data; },
+    async revokeLiveCode(code) { const { error } = await sb.rpc('admin_revoke_live_code', { p_code: code }); if (error) throw new Error(error.message); },
     listUsers, ledger, ledgerPage, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
     get user() { return user; }, get profile() { return profile; },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); }

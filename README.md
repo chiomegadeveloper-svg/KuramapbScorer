@@ -44,3 +44,8 @@ auto switch ends · player names with court positions and current server · undo
 
 ## Deploy
 Static site, no build step, HTTPS required. Vercel: import the GitHub repo (framework preset "Other").
+
+## LIVE (multi-court + OBS)
+- Lobby → **LIVE**, or open `/live.html`. Pick 2–6 courts. Each court has its own code/QR; referees scan it and score with **no sign-in**.
+- The organizer activates the screen by scanning the "Scan to activate LIVE" QR and signing in with Google. One **LIVE pass (PHP 500 / day)** — donated in the app and approved on the owner page like any other donation — unlocks every court and the OBS lower third.
+- **OBS:** on the LIVE screen tap *OBS lower third* → copy the link → OBS *Sources → + → Browser*, Width 1920, Height 264. Transparent background, shows all active courts, updates live (via Supabase Realtime). The toggle also shows the strip on the LIVE screen itself.

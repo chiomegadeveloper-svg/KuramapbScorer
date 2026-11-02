@@ -70,6 +70,18 @@
   .pay-msg.bad { border-color: rgba(255,80,100,.5); background: rgba(255,80,100,.08); }
   .pay-msg.hidden { display: none; }
   .pay-msg .undo-btn, #reviewed .undo-btn { padding: 7px 14px; border-radius: 10px; border: 1px solid #ffb547; background: transparent; color: #ffcf7a; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+  .live-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #fff; background: #ff2e4d; border-radius: 4px; padding: 2px 5px 1px; margin-right: 4px; }
+  .trial-gen { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+  .trial-gen .big-btn { padding: 12px 18px; font-size: 13px; white-space: nowrap; }
+  .trial-new { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin: 12px 0; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255,46,77,.45); background: rgba(255,46,77,.07); }
+  .trial-new.hidden { display: none; }
+  .trial-new b { display: block; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 28px; letter-spacing: .12em; color: #fff; margin-top: 4px; }
+  .trial-new small { display: block; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+  .trial-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tcode { font-family: ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .08em; font-weight: 700; }
+  .tst { font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+  .tst.unused { color: #ffcf7a; } .tst.active { color: var(--ball); } .tst.done { color: var(--ink-3); } .tst.off { color: var(--danger); }
+  @media (max-width: 560px) { .trial-gen { grid-template-columns: 1fr; } }
   .pager { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
   .pager:empty { display: none; }
   .pager .pg-info { font-size: 13px; color: var(--ink-2); letter-spacing: .03em; }
@@ -171,6 +183,20 @@
       <details style="margin-top:12px" id="reviewedBox"><summary class="note" style="cursor:pointer">Recently reviewed · approved by mistake? Use <b>Undo</b></summary>
         <div class="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Package</th><th>Ref</th><th>Status</th><th></th></tr></thead><tbody id="reviewed"></tbody></table></div>
       </details>
+    </div>
+
+    <div class="card">
+      <h2 style="display:flex;align-items:center;gap:10px">LIVE trial codes <span class="live-tag" style="font-size:12px">LIVE</span></h2>
+      <p class="note" style="margin:-4px 0 12px">Give an organizer a code to try LIVE (multi-court + OBS) for free. They type it on the LIVE screen — no sign-in or payment. Each code works <b>once</b>, unlocks LIVE for <b>1 hour</b> from the moment it’s entered, and must be used within 7 days.</p>
+      <div class="trial-gen"><input class="text-in" id="trialNote" maxlength="40" placeholder="Who is it for? (optional)" style="text-transform:none"><button class="big-btn" id="trialGo">Generate 1-hour code</button></div>
+      <div class="trial-new hidden" id="trialNew">
+        <div><span class="eyebrow">New code · 1 hour of LIVE</span><b id="trialCode"></b><small id="trialFor"></small></div>
+        <div class="trial-btns"><button class="btn primary" id="trialCopy">Copy code</button><button class="btn" id="trialShare">Copy message</button></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Code</th><th>For</th><th>Created</th><th>Status</th><th></th></tr></thead>
+        <tbody id="trials"></tbody>
+      </table></div>
     </div>
 
     <div class="card">

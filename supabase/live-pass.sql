@@ -1,0 +1,4 @@
+-- Already applied to the live project (migration "live_pass"). Kept for reference.
+-- LIVE pass: PHP 500 / day, its own time bank (profiles.live_hours / live_until), package kind 'live'.
+-- RPCs: start_live_pass(p_device) — used by the LIVE screen when the organizer signs in;
+-- admin_review_purchase / admin_undo_approval route LIVE donations to the LIVE time bank.

@@ -20,6 +20,16 @@
   const params = new URLSearchParams(location.search);
   const wantScan = params.get('scan') === '1';
   let code = PBLink.normCode(params.get('c') || (wantScan ? '' : store.get('aopb.remoteCode', '')));
+  // 'solo' = normal scoreboard · 'live' = a court on a LIVE screen (referee, no sign-in) · 'act' = organizer activating LIVE
+  let mode = params.get('live') === '1' ? 'live' : params.get('act') === '1' ? 'act'
+    : (code && code === store.get('aopb.remoteCode', '') ? store.get('aopb.remoteMode', 'solo') : 'solo');
+  let scanMode = null;
+  function setMode(m) {
+    mode = m; store.set('aopb.remoteMode', m);
+    document.body.classList.toggle('mode-live', m === 'live'); document.body.classList.toggle('mode-act', m === 'act');
+    if (m === 'live') authed = true;
+  }
+  const modeQS = () => (mode === 'live' ? '&live=1' : mode === 'act' ? '&act=1' : '');
   try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {}
   const touch = () => { try { localStorage.setItem('aopb.remoteAt', String(Date.now())); } catch (e) {} };
 
@@ -28,9 +38,14 @@
   function flash(t) { const f = $('flash'); f.textContent = t; f.classList.add('show'); clearTimeout(flashT); flashT = setTimeout(() => f.classList.remove('show'), 1400); }
 
   /* ---------- Status ---------- */
-  let downSince = Date.now();
+  let downSince = Date.now(), wasLive = false, kickT = null;
   function setStatus(s) {
     if (leaving) return;
+    // LIVE court: if the referee loses the court, they must scan the QR or enter the code again
+    if (mode === 'live') {
+      if (s === 'connected') { wasLive = true; clearTimeout(kickT); kickT = null; }
+      else if (wasLive && !kickT) kickT = setTimeout(() => { kickT = null; if (!connected && mode === 'live') { wasLive = false; leaveScreen(false, 'Connection to the court was lost. Scan the court’s QR code or enter its code again.'); buzz([80, 60, 80]); } }, 8000);
+    }
     if (s === 'connected') { downSince = 0; $('connHelp').classList.add('hidden'); }
     else if (!downSince) downSince = Date.now();
     if (s === 'connected' && !connected) setTimeout(sendAuth, 50);
@@ -55,8 +70,10 @@
     leaving = false;
     code = PBLink.normCode(c);
     if (code.length !== 6) { $('joinErr').textContent = 'Codes are 6 characters.'; return; }
+    if (scanMode) { setMode(scanMode); scanMode = null; } else setMode(mode);
     store.set('aopb.remoteCode', code); touch(); stopScan();
-    history.replaceState(null, '', 'remote.html?c=' + code);
+    history.replaceState(null, '', 'remote.html?c=' + code + modeQS());
+    if (mode === 'live') { store.del('aopb.remoteCode'); history.replaceState(null, '', 'remote.html'); }   // LIVE referees always re-enter the code / rescan
     $('join').classList.add('hidden'); $('ctrl').classList.remove('hidden');
     if (link) link.destroy();
     link = PBLink.client({ code, onState, onStatus: setStatus, onMessage: onLinkMessage });
@@ -70,6 +87,8 @@
   /* ---------- State from display ---------- */
   function onState(s) {
     if (leaving) return;
+    if (s && s.liveCourt && mode !== 'live') { setMode('live'); setGate(null); store.del('aopb.remoteCode'); history.replaceState(null, '', 'remote.html'); }
+    if (s && s.liveAct && mode !== 'act') setMode('act');
     touch();
     const prevEv = st && st.lastEvent ? st.lastEvent.t : 0;
     st = s;
@@ -87,11 +106,13 @@
     const g = $('gate'); opts = opts || {};
     g.classList.toggle('hidden', !state);
     const locked = state === 'denied' && opts.reason === 'OTHER_DEVICE';
-    const offer = state === 'denied' && !locked;   // no pass (or a hiccup) → show packages, never a dead end
+    const liveEnded = state === 'denied' && opts.reason === 'LIVE_ENDED';
+    const offer = state === 'denied' && !locked && !liveEnded;   // no pass (or a hiccup) → show packages, never a dead end
+    shopKind = (state === 'denied' && (opts.reason === 'NO_LIVE_PASS' || mode === 'act')) ? 'live' : 'solo';
     g.classList.toggle('bad', locked);
     g.classList.toggle('offer', offer);
     $('gateGoogle').classList.toggle('hidden', state !== 'signin');
-    $('gateRetry').classList.toggle('hidden', !locked);
+    $('gateRetry').classList.toggle('hidden', !(locked || liveEnded));
     $('gateSwitch').classList.toggle('hidden', !locked);
     $('gateBuy').classList.add('hidden');
     $('gatePkgs').classList.toggle('hidden', !offer);
@@ -111,12 +132,16 @@
         ? who + ' is already used on another phone. Passes work on one account and one phone only. Ask the owner to reset the phone lock if you changed phones.'
         : 'Signed in as ' + who + '. Pick a donation to the support fund, send it with InstaPay, and your scoring time unlocks once the developer confirms it.';
       if (opts.reason === 'OTHER_DEVICE') $('gateBody').textContent += ' Email dinkykongsupport@gmail.com.';
+      if (liveEnded) { $('gateTitle').textContent = 'LIVE pass ended'; $('gateBody').textContent = 'The organizer’s LIVE pass for this screen has ended. Ask them to renew it on the LIVE screen, then tap Try again.'; }
+      else if (shopKind === 'live' && !locked) { $('gateTitle').textContent = 'Get today’s LIVE pass'; $('gateBody').textContent = 'Signed in as ' + who + '. A PHP 500 donation unlocks LIVE for 24 hours: up to 6 courts on one screen, a referee remote for every court and the OBS lower third.'; }
     }
+    if (state === 'signin' && mode === 'act') { $('gateTitle').textContent = 'Organizer sign-in'; $('gateBody').textContent = 'Sign in with Google to activate LIVE on this screen. One LIVE pass (PHP 500 / day) covers every court and the OBS lower third.'; }
     renderCtrl();
   }
 
   async function sendAuth(force) {
     if (!AUTH || !link || !connected) return;
+    if (mode === 'live' && !force) { authed = true; return; }   // LIVE court: the organizer's LIVE pass covers referees
     if (!PBAuth.user) { authed = false; setGate('signin'); return; }
     if (!force && Date.now() - lastAuthSend < 4000) return;
     lastAuthSend = Date.now();
@@ -135,6 +160,8 @@
   function onLinkMessage(m) {
     if (leaving) return;
     if (m.t === 'authok' && m.silent) { authed = true; return; }
+    if (m.t === 'authok' && mode === 'act') { authRetries = 0; authed = true; setGate(null); showActDone(m); buzz([40, 60, 40]); return; }
+    if (m.t === 'authok' && mode === 'live') { authed = true; setGate(null); return; }
     if (m.t === 'authok') { authRetries = 0; authed = true; setGate(null); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
     else if (m.t === 'denied') {
       authed = false;
@@ -152,7 +179,7 @@
     leaving = true;
     const l = link; link = null; st = null; connected = false; authed = false;
     setTimeout(() => { try { l && l.destroy(); } catch (e) {} }, notify ? 600 : 0);
-    store.del('aopb.remoteCode'); code = '';
+    store.del('aopb.remoteCode'); store.del('aopb.remoteMode'); code = ''; setMode('solo'); $('actDone').classList.add('hidden');
     $('status').classList.remove('ok', 'bad');
     history.replaceState(null, '', 'remote.html');
     setGate(null); closeSheet(); showJoin(msg || '');
@@ -175,19 +202,19 @@
   setInterval(renderHours, 60000);
 
   /* ---------- Support fund donation (InstaPay P2P, confirmed by the owner) ---------- */
-  let pkgList = [], chosen = null;
+  let pkgList = [], chosen = null, shopKind = 'solo', pkgKind = '';
   const php = (n) => 'PHP ' + Number(n).toLocaleString();
   function shopView(v) { ['shopPick', 'shopPay', 'shopDone'].forEach((id) => $(id).classList.toggle('hidden', id !== v)); }
   async function openShop() {
     renderHours();
     $('shop').classList.remove('hidden'); shopView('shopPick');
-    pkgList = await PBAuth.packages();
-    $('pkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b><small>' + k.hours + ' hours of scoring</small></button>').join('');
+    pkgList = await PBAuth.packages(shopKind); pkgKind = shopKind;
+    $('pkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b><small>' + (k.kind === 'live' ? k.hours + ' h · all courts + OBS' : k.hours + ' hours of scoring') + '</small></button>').join('');
     $('pkgs').querySelectorAll('.pkg').forEach((b) => b.onclick = () => choose(b.dataset.c));
     renderMine();
   }
   async function renderGatePkgs() {
-    if (!pkgList.length) pkgList = await PBAuth.packages();
+    if (!pkgList.length || pkgKind !== shopKind) { pkgList = await PBAuth.packages(shopKind); pkgKind = shopKind; }
     $('gatePkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b></button>').join('');
     $('gatePkgs').querySelectorAll('.pkg').forEach((b) => b.onclick = async () => { await openShop(); choose(b.dataset.c); });
   }
@@ -238,7 +265,8 @@
     pollT = setInterval(async () => {
       const p = await PBAuth.refresh();
       const list = await renderMine();
-      if (p && (p.hours_balance > 0 || PBAuth.passActive())) {
+      const liveReady = shopKind === 'live' && p && (p.live_hours > 0 || (p.live_until && new Date(p.live_until) > new Date()));
+      if (p && (liveReady || (shopKind !== 'live' && (p.hours_balance > 0 || PBAuth.passActive())))) {
         clearInterval(pollT); pollT = null;
         $('shop').classList.add('hidden'); flash('Pass approved!'); buzz([40, 60, 40]);
         if (!authed) sendAuth(true);
@@ -247,7 +275,7 @@
   }
 
   $('gateGoogle').onclick = () => PBAuth.signIn();
-  $('gateRetry').onclick = async () => { await PBAuth.refresh(); sendAuth(true); };
+  $('gateRetry').onclick = async () => { await PBAuth.refresh(); if (mode === 'live' && link) { link.sendMsg({ t: 'auth', device }); return; } sendAuth(true); };
   // Switch to another Google account (e.g. the one that donated). Google's account picker opens.
   const switchAccount = async () => {
     if (!confirm('Switch to another Google account? You’ll sign out of ' + ((PBAuth.user && PBAuth.user.email) || 'this account') + ' and pick a different one.')) return;
@@ -412,7 +440,7 @@
   /* ---------- QR scanner ---------- */
   let scanStream = null, scanRaf = 0, detector = null;
   function codeFromText(t) {
-    try { const u = new URL(t); const c = u.searchParams.get('c'); if (c) return PBLink.normCode(c); } catch (e) {}
+    try { const u = new URL(t); const c = u.searchParams.get('c'); if (c) { scanMode = u.searchParams.get('live') === '1' ? 'live' : u.searchParams.get('act') === '1' ? 'act' : 'solo'; return PBLink.normCode(c); } } catch (e) {}
     const m = String(t).toUpperCase().match(/\b[A-Z0-9]{6}\b/); return m ? m[0] : '';
   }
   async function startScan() {
@@ -489,4 +517,12 @@
   }, 1000);
   $('connRetry').onclick = () => { const c = code; downSince = Date.now(); $('connHelp').classList.add('hidden'); if (link) link.destroy(); link = null; join(c); };
   $('connRescan').onclick = () => { leaveScreen(false); downSince = Date.now(); startScan(); };
+  /* LIVE activation (organizer) */
+  function showActDone(m) {
+    const t = m.until ? new Date(m.until) : null;
+    $('actUntil').textContent = t ? t.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'today';
+    $('actDone').classList.remove('hidden');
+  }
+  $('actDoneBtn').onclick = () => { leaveScreen(false, 'LIVE is on. To referee a court, scan that court’s QR code.'); };
+  setMode(mode);
 })();

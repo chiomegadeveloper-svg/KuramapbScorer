@@ -370,8 +370,14 @@
     const pause = () => { clearInterval(t); $('chooserCount').textContent = 'Choose Scoreboard or Remote'; };
     PBCommon.installButton($('installApp'), { onHelp: (h) => { pause(); const p = $('installHelp'); p.textContent = h; p.classList.remove('hidden'); } });
     $('installApp').addEventListener('click', pause);
+    $('asLive').onclick = () => { clearInterval(t); stopAnim(); location.href = 'live.html'; };
     $('asRemote').onclick = () => { clearInterval(t); try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {} location.href = 'remote.html?scan=1'; };
-    el.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowDown') $('asRemote').focus(); if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') $('asDisplay').focus(); e.stopPropagation(); });
+    el.addEventListener('keydown', (e) => {   // TV remote arrows move between the three choices
+      const opts = [$('asDisplay'), $('asRemote'), $('asLive')]; const i = Math.max(0, opts.indexOf(document.activeElement));
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') opts[Math.min(2, i + 1)].focus();
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') opts[Math.max(0, i - 1)].focus();
+      e.stopPropagation();
+    });
     const start = () => {
       el.classList.remove('hidden'); $('asDisplay').focus(); startAnim();
       t = setInterval(() => { left--; $('chooserCount').textContent = 'Starting as Scoreboard in ' + left + ' s'; if (left <= 0) pickDisplay(); }, 1000);

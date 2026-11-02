@@ -41,7 +41,8 @@
         '<td><div class="u">' + (u.avatar_url ? '<img src="' + esc(u.avatar_url) + '" alt="">' : '<img alt="">') +
         '<div><b>' + esc(u.full_name || '—') + (u.is_admin ? ' · admin' : '') + '</b><small>' + esc(u.email || '') + '</small></div></div></td>' +
         '<td class="num">' + (u.hours_balance || 0) + ' h</td>' +
-        '<td class="' + (active ? 'pass-on' : '') + '">' + (active ? 'until ' + fmt(u.pass_until) : '—') + '</td>' +
+        '<td class="' + (active ? 'pass-on' : '') + '">' + (active ? 'until ' + fmt(u.pass_until) : '—') +
+          (u.live_until && new Date(u.live_until) > new Date() ? '<br><span class="live-tag">LIVE</span> until ' + fmt(u.live_until) : (u.live_hours ? '<br><span class="live-tag">LIVE</span> ' + u.live_hours + ' h ready' : '')) + '</td>' +
         '<td>' + (u.bound_device ? '<button class="mini-btn" data-reset="' + esc(u.id) + '" title="Allow this user to switch phones">Locked · reset</button>' : '<span style="color:var(--ink-3)">none</span>') + '</td>' +
         '<td><div class="quick">' + [[24, '+1 day'], [168, '+1 wk']].map(([n, l]) => '<button data-e="' + esc(u.email) + '" data-n="' + n + '">' + l + '</button>').join('') + '</div></td>' +
         '</tr>';
@@ -114,6 +115,42 @@
     }
   }
 
+  /* ---------- LIVE trial codes ---------- */
+  const fmtT = PBCommon.fmtTrial;
+  async function loadTrials() {
+    let list = [];
+    try { list = await PBAuth.listLiveCodes(); } catch (e) { return; }
+    const now = Date.now();
+    $('trials').innerHTML = list.map((t) => {
+      const until = t.redeemed_at ? new Date(t.redeemed_at).getTime() + t.minutes * 60000 : 0;
+      const [cls, txt] = t.revoked ? ['off', 'Cancelled'] : t.redeemed_at ? (until > now ? ['active', 'In use · until ' + fmt(new Date(until))] : ['done', 'Used ' + fmt(t.redeemed_at)])
+        : new Date(t.expires_at).getTime() < now ? ['done', 'Expired unused'] : ['unused', 'Not used yet'];
+      return '<tr><td class="tcode">' + esc(fmtT(t.code)) + '</td><td>' + esc(t.note || '—') + '</td><td>' + fmt(t.created_at) + '</td><td><span class="tst ' + cls + '">' + esc(txt) + '</span></td>' +
+        '<td>' + (!t.revoked && !t.redeemed_at && cls === 'unused' ? '<button class="mini-btn" data-cancel="' + esc(t.code) + '">Cancel</button>' : '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" style="color:var(--ink-3)">No trial codes yet.</td></tr>';
+    labelCells('trials');
+    $('trials').querySelectorAll('[data-cancel]').forEach((b) => b.onclick = async () => {
+      if (!confirm('Cancel trial code ' + fmtT(b.dataset.cancel) + '? It will stop working.')) return;
+      try { await PBAuth.revokeLiveCode(b.dataset.cancel); loadTrials(); } catch (e) { alert('Could not cancel: ' + e.message); }
+    });
+  }
+  let lastTrial = null;
+  $('trialGo').onclick = async () => {
+    $('trialGo').disabled = true;
+    try {
+      const note = $('trialNote').value.trim();
+      const code = await PBAuth.createLiveCode(note);
+      lastTrial = { code: fmtT(code), note };
+      $('trialCode').textContent = lastTrial.code; $('trialFor').textContent = note ? 'For ' + note : 'Give this code to the organizer';
+      $('trialNew').classList.remove('hidden'); $('trialNote').value = '';
+      loadTrials();
+    } catch (e) { alert('Could not generate a code: ' + e.message); }
+    finally { $('trialGo').disabled = false; }
+  };
+  const copy = async (text, btn) => { try { await navigator.clipboard.writeText(text); const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(() => (btn.textContent = o), 1500); } catch (e) { prompt('Copy this:', text); } };
+  $('trialCopy').onclick = () => lastTrial && copy(lastTrial.code, $('trialCopy'));
+  $('trialShare').onclick = () => lastTrial && copy('Your DinkyKong LIVE trial code: ' + lastTrial.code + '\nOpen https://dinkykong.pro on your TV or laptop, choose LIVE, then type the code under “Have a trial code?”. It unlocks LIVE (2–6 courts + OBS lower third) for 1 hour from when you enter it. Use it within 7 days.', $('trialShare'));
+
   async function loadAll() {
     try {
       users = await PBAuth.listUsers();
@@ -122,6 +159,7 @@
       await loadPayments(byId);
       byIdCache = byId;
       await loadLedger();
+      loadTrials();
     } catch (e) { msg('Could not load: ' + e.message, 'bad'); }
   }
 
