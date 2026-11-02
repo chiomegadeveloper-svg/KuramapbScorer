@@ -86,9 +86,9 @@
           // Usually our own previous session still registered after a reload — retry, then rotate code.
           failures++;
           try { peer.destroy(); } catch (e) {}
-          if (failures > 6) { status('newcode'); return; }
+          if (failures > 40) { status('newcode'); return; }   // ~2 minutes of retries before giving up on this code
           status('connecting', { retry: failures });
-          setTimeout(start, 2500);
+          setTimeout(start, 3000);
         } else if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') {
           status('reconnecting');
           try { peer.destroy(); } catch (e) {}

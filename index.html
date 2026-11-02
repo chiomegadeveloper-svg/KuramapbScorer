@@ -8,6 +8,7 @@
   try {
     var q = new URLSearchParams(location.search), role = q.get('role');
     if (role === 'display') { localStorage.setItem('aopb.role', 'display'); return; }
+    if (sessionStorage.getItem('aopb.tabRole') === 'display') return;   // this tab is a scoreboard: never turn it into a remote
     var r = localStorage.getItem('aopb.role'), c = JSON.parse(localStorage.getItem('aopb.remoteCode') || '""'), at = +localStorage.getItem('aopb.remoteAt') || 0;
     if (r === 'remote' && c && c.length === 6 && Date.now() - at < 24 * 3600e3) location.replace('remote.html?c=' + c);
   } catch (e) {}
@@ -31,19 +32,16 @@
 <body>
 <div class="splash" id="splash" aria-hidden="true"><img src="icons/dinkykong-logo.png" alt="DinkyKong Pickleball Club"><div class="splash-bar"><i></i></div></div>
 <div class="chooser hidden" id="chooser" role="dialog" aria-label="Use this device as">
-  <div class="dk-anim" aria-hidden="true">
-    <div class="dk-arm dk-back"><span class="dk-handle"></span></div>
-    <img class="dk-logo" src="icons/dinkykong-logo.png" alt="">
-    <img class="dk-logo2" src="icons/dinkykong-nopaddle.png" alt="">
-    <div class="dk-arm dk-front"><img class="dk-head" src="icons/dk-paddle-head.png" alt=""></div>
-    <span class="dk-ball"></span>
+  <div class="dk-anim" id="dkAnim" aria-hidden="true">
+    <span class="dk-glow"></span>
+    <video class="dk-video" id="dkVideo" muted loop playsinline preload="auto" poster="icons/dinkykong-logo.png"></video>
   </div>
   <h1>Use this device as</h1>
   <div class="chooser-opts">
     <button class="chooser-opt primary" id="asDisplay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><b>Scoreboard</b><span>TV · tablet · laptop</span></button>
     <button class="chooser-opt" id="asRemote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><b>Remote</b><span>Phone · scan the scoreboard</span></button>
   </div>
-  <p class="chooser-count" id="chooserCount">Starting as Scoreboard in 10 s</p>
+  <p class="chooser-count" id="chooserCount">Starting as Scoreboard in 30 s</p>
 </div>
 <main class="display" id="display">
   <header class="d-top">

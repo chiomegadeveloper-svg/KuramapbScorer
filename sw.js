@@ -1,10 +1,10 @@
 /* Kurama Pickleball Scorer service worker: app shell offline, CDN libs + fonts cached on first use. */
-const VERSION = 'aopb-v19';
+const VERSION = 'aopb-v22';
 const SHELL = [
   './', './index.html', './display.html', './remote.html',
   './admin.html', './css/app.css', './js/config.js', './js/auth.js', './js/admin.js', './js/common.js', './js/engine.js', './js/link.js', './js/display.js', './js/remote.js',
   './manifest.webmanifest', './admin.webmanifest', './icons/admin-192.png', './icons/admin-512.png', './privacy.html', './terms.html',
-  './icons/kurama-mark.png', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon.png', './icons/instapay-qr.png', './icons/dinkykong-logo.png', './icons/pixel-ball.svg', './icons/dinkykong-nopaddle.png', './icons/dk-paddle-head.png'
+  './icons/kurama-mark.png', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon.png', './icons/instapay-qr.png', './icons/dinkykong-logo.png', './icons/dk-anim.webm', './icons/dk-anim.webp'
 ];
 const RUNTIME_HOSTS = ['cdnjs.cloudflare.com', 'unpkg.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
@@ -25,7 +25,7 @@ self.addEventListener('fetch', (e) => {
   if (url.origin === location.origin) {
     e.respondWith(
       fetch(req).then((res) => {
-        if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
+        if (res.ok && res.status !== 206) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)).catch(() => {}); }
         return res;
       }).catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match('./index.html')))
     );

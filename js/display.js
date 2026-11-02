@@ -292,15 +292,23 @@
   /* ---------- Device role chooser (Scoreboard is the default) ---------- */
   (function chooser() {
     const q = new URLSearchParams(location.search);
-    let chosen = false; try { chosen = sessionStorage.getItem('aopb.roleChosen') === 'display'; } catch (e) {}
-    if (q.get('role') === 'display' || q.get('c') || chosen) return;   // a refresh keeps the scoreboard
-    const el = $('chooser'); let left = 10, t;
-    const pickDisplay = () => { clearInterval(t); try { sessionStorage.setItem('aopb.roleChosen', 'display'); } catch (e) {} try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} el.classList.add('hidden'); keepAwake(); };
+    if (q.get('role') === 'display' || q.get('c')) return;   // every launch / restart shows the lobby
+    const el = $('chooser'); let left = 30, t;
+    // DinkyKong animation: transparent WebM (Chrome, Android, TVs); animated WebP on Safari/iOS (no WebM alpha there)
+    const startAnim = () => {
+      const v = $('dkVideo'); const ua = navigator.userAgent;
+      const safari = /iP(hone|ad|od)/.test(ua) || (/Safari/.test(ua) && !/Chrome|Chromium|CriOS|Android|Edg/.test(ua));
+      const webm = !!(v.canPlayType && v.canPlayType('video/webm; codecs="vp9"'));
+      if (safari || !webm) { const img = new Image(); img.className = 'dk-video'; img.alt = ''; img.src = 'icons/dk-anim.webp'; v.replaceWith(img); return; }
+      v.src = 'icons/dk-anim.webm'; v.play().catch(() => {});
+    };
+    const stopAnim = () => { const v = $('dkVideo'); if (v && v.pause) { v.pause(); v.removeAttribute('src'); v.load(); } };
+    const pickDisplay = () => { clearInterval(t); stopAnim(); try { sessionStorage.setItem('aopb.tabRole', 'display'); } catch (e) {} try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} el.classList.add('hidden'); keepAwake(); };
     $('asDisplay').onclick = pickDisplay;
     $('asRemote').onclick = () => { clearInterval(t); try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {} location.href = 'remote.html?scan=1'; };
     el.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowDown') $('asRemote').focus(); if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') $('asDisplay').focus(); e.stopPropagation(); });
     const start = () => {
-      el.classList.remove('hidden'); $('asDisplay').focus();
+      el.classList.remove('hidden'); $('asDisplay').focus(); startAnim();
       t = setInterval(() => { left--; $('chooserCount').textContent = 'Starting as Scoreboard in ' + left + ' s'; if (left <= 0) pickDisplay(); }, 1000);
     };
     setTimeout(start, document.getElementById('splash') ? 5200 : 0);
