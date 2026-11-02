@@ -334,14 +334,22 @@
   /* ---------- Settings sheet ---------- */
   function swatches(el, team) {
     el.innerHTML = PALETTE.slice(0, 6).map((c) => '<button class="sw" data-c="' + c + '" style="background:' + c + '" aria-label="' + c + '"></button>').join('');
-    el.querySelectorAll('.sw').forEach((b) => b.onclick = () => { draft.colors[team] = b.dataset.c; paintSheet(); });
+    el.querySelectorAll('.sw').forEach((b) => b.onclick = () => {
+      if (b.dataset.c.toLowerCase() === String(draft.colors[1 - team]).toLowerCase()) { flash((team ? 'Team A' : 'Team B') + ' already uses this color'); return; }
+      draft.colors[team] = b.dataset.c; paintSheet();
+    });
   }
   function paintSheet() {
     document.querySelectorAll('.seg').forEach((seg) => {
       const k = seg.dataset.k;
       seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(draft[k]) === b.dataset.v));
     });
-    [['swA', 0], ['swB', 1]].forEach(([id, t]) => $(id).querySelectorAll('.sw').forEach((b) => b.classList.toggle('on', b.dataset.c.toLowerCase() === String(draft.colors[t]).toLowerCase())));
+    [['swA', 0], ['swB', 1]].forEach(([id, t]) => $(id).querySelectorAll('.sw').forEach((b) => {
+      const c = b.dataset.c.toLowerCase();
+      b.classList.toggle('on', c === String(draft.colors[t]).toLowerCase());
+      const taken = c === String(draft.colors[1 - t]).toLowerCase();   // the other team's color can't be picked
+      b.classList.toggle('taken', taken); b.disabled = taken; b.title = taken ? 'Used by ' + (t ? 'Team A' : 'Team B') : '';
+    }));
     $('fs0').textContent = ($('nA').value || 'Team A').slice(0, 10);
     $('fs1').textContent = ($('nB').value || 'Team B').slice(0, 10);
     const single = draft.mode === 'singles';

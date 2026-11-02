@@ -274,6 +274,8 @@ button { font: inherit; color: inherit; }
 .swatches { display: flex; gap: 6px; }
 .sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
 .sw.on { border-color: #fff; box-shadow: 0 0 0 2px var(--navy-900) inset; }
+.sw.taken { opacity: .22; cursor: not-allowed; position: relative; }
+.sw.taken::after { content: ''; position: absolute; left: 50%; top: 50%; width: 120%; height: 2px; background: #fff; transform: translate(-50%, -50%) rotate(-45deg); border-radius: 2px; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--navy-800); border: 1px solid var(--line); }
 .seg button { border: 0; background: none; padding: 10px 4px; border-radius: 10px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); cursor: pointer; }
 .seg button.on { background: var(--ink); color: var(--navy-950); }
@@ -502,3 +504,32 @@ button { font: inherit; color: inherit; }
 .live-stats .lv-dot { width: .6em; height: .6em; border-radius: 50%; background: #39ff14; box-shadow: 0 0 0 0 rgba(57,255,20,.6); animation: lvPulse 1.8s infinite; }
 @keyframes lvPulse { 70% { box-shadow: 0 0 0 .55em rgba(57,255,20,0); } 100% { box-shadow: 0 0 0 0 rgba(57,255,20,0); } }
 .pair-text .live-stats { align-self: flex-start; }
+
+/* ===== Scoreboard layout: labels never overlap the score =====
+ * Each team card is three rows: header (name + players) / score / footer (server + games).
+ * The digits fill exactly the middle row, so they are as big as possible without touching the labels. */
+.team { grid-template-rows: auto minmax(0, 1fr) auto !important; row-gap: 1.2vh; padding: 2.4vh 1.6vw 1.8vh; }
+.team-head { width: 100%; gap: 1vh; min-width: 0; }
+.team-name { font-size: clamp(16px, 5.2vh, 7vw); }
+.team-players { flex-wrap: nowrap; max-width: 100%; min-width: 0; }
+.pl { font-size: clamp(10px, 2.1vh, 2.4vw); min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: .45em .9em .35em; }
+.team-score { align-self: stretch; justify-self: stretch; position: relative; height: 100%; padding: 0; overflow: visible; }
+.team-score .seg7, .team-score .seg7[class] { position: absolute; inset: 0; width: 100% !important; height: 100% !important; max-width: none; margin: auto; }
+.team-foot { min-height: 0; gap: 1.2vw; }
+.serve-tag { font-size: clamp(10px, 2vh, 2.2vw); gap: .8vh; min-width: 0; overflow: hidden; }
+.serve-tag > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.serve-tag .ball { width: 3.4vh; height: 3.4vh; }
+.team-score.bump { animation: bumpGlow .45s ease-out; }
+@keyframes bumpGlow { 0% { filter: brightness(1); } 35% { filter: brightness(1.7); } 100% { filter: brightness(1); } }
+@media (orientation: portrait) {
+  .team { padding: 1.6vh 3vw 1.4vh; row-gap: .8vh; }
+  .team-name { font-size: clamp(14px, 3.6vh, 8vw); }
+  .pl { font-size: clamp(10px, 1.7vh, 3.4vw); }
+  .serve-tag { font-size: clamp(10px, 1.7vh, 3.2vw); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .team { padding: 1.2vh 1.4vw; row-gap: .6vh; }
+  .team-name { font-size: 6vh; }
+  .pl { font-size: 2.6vh; }
+  .serve-tag { font-size: 2.6vh; }
+}
