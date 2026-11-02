@@ -262,6 +262,15 @@
     drawQr(); startLink(); showPair(true);
   }
 
+  /* ---------- Live "who's online" status for the lobby / QR screen ---------- */
+  let liveHandle = null;
+  const boardLive = () => !!(link && link.remotes > 0 && licensed());
+  PBAuth.live('b-' + Math.random().toString(36).slice(2, 10), { r: 'board', live: false }, (s) => {
+    ['lobbyStats', 'pairStats'].forEach((id) => { const el = $(id); if (!el) return; el.innerHTML = PBCommon.liveText(s); el.classList.remove('hidden'); });
+  }).then((h) => { liveHandle = h; }).catch(() => {});
+  let lastLive = false;
+  setInterval(() => { const v = boardLive(); if (liveHandle && v !== lastLive) { lastLive = v; liveHandle.update({ r: 'board', live: v }); } }, 5000);
+
   /* ---------- Restart for the next players ---------- */
   // When the remote signs out or exits, or no remote is connected for 3 minutes, the board resets:
   // new code, fresh match, pass cleared, back to the splash + lobby, then a new QR.

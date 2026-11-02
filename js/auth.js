@@ -27,6 +27,33 @@
     return api;
   }
 
+  /* Live "who's online" presence for the lobby. Each open scoreboard / phone joins one shared channel.
+   * onUpdate gets { online, boards, courts, phones, players, active }. Returns { update(state) }. */
+  let liveClient = null;
+  async function live(id, state, onUpdate) {
+    if (!enabled) return null;
+    await PBCommon.loadScript(SB_URLS);
+    if (!liveClient) liveClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'aopb-live' }
+    });
+    const c = liveClient;
+    let stats = {}, cur = state;
+    const ch = c.channel('dk-online', { config: { presence: { key: id } } });
+    const tally = () => {
+      let boards = 0, courts = 0, phones = 0;
+      Object.values(ch.presenceState()).forEach((arr) => {
+        const m = (arr && arr[0]) || {};
+        if (m.r === 'board') { boards++; if (m.live) courts++; } else phones++;
+      });
+      onUpdate({ online: boards + phones, boards, courts, phones, players: stats.players, active: stats.active_passes });
+    };
+    ch.on('presence', { event: 'sync' }, tally)
+      .subscribe((s) => { if (s === 'SUBSCRIBED') ch.track(cur).catch(() => {}); });
+    const loadStats = async () => { try { const { data } = await c.rpc('app_stats'); if (data) { stats = data; tally(); } } catch (e) {} };
+    loadStats(); setInterval(loadStats, 120000);
+    return { update(s) { cur = s; ch.track(s).catch(() => {}); } };
+  }
+
   async function refresh() {
     if (!sb || !user) { profile = null; emit(); return null; }
     // The profile row is created by a database trigger right after first sign-in; retry briefly.
@@ -163,6 +190,7 @@
     async deletePush(endpoint) { await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }); },
     get client() { return sb; },
     async undoApproval(id) { const { data, error } = await sb.rpc('admin_undo_approval', { p_id: id }); if (error) throw new Error(error.message); return data; },
+    live,
     listUsers, ledger, ledgerPage, addCredits, packages, requestPurchase, myPurchases, adminPurchases, reviewPurchase, addHours, resetDevice,
     get user() { return user; }, get profile() { return profile; },
     onChange(f) { listeners.add(f); return () => listeners.delete(f); }

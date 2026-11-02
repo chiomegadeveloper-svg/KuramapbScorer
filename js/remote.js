@@ -441,4 +441,6 @@
   /* Install the remote as an app on this phone */
   PBCommon.installButton($('installApp'), { onHelp: (h) => { $('joinErr').textContent = h; } });
   PBCommon.installButton($('installApp2'), { onHelp: (h) => { alert(h); } });
+  /* Count this phone in the lobby's "online now" status */
+  PBAuth.live('p-' + device.slice(0, 12), { r: 'phone' }, () => {}).catch(() => {});
 })();

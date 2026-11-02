@@ -136,5 +136,14 @@
   }
   const approvalOpen = () => { const h = phHour(); return h >= HOURS.open && h < HOURS.close; };
 
-  window.PBCommon = { HOURS, approvalOpen, seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
+  /* "🟢 18 online now · 🏓 5 courts scoring · 👥 342 players" */
+  function liveText(s) {
+    const n = (x) => Number(x || 0).toLocaleString();
+    const parts = ['<span class="lv-dot"></span><b>' + n(s.online) + '</b> online now'];
+    if (s.courts) parts.push('<b>' + n(s.courts) + '</b> ' + (s.courts === 1 ? 'court' : 'courts') + ' scoring');
+    if (s.players) parts.push('<b>' + n(s.players) + '</b> players joined');
+    return parts.join('<i>·</i>');
+  }
+
+  window.PBCommon = { liveText, HOURS, approvalOpen, seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
 })();

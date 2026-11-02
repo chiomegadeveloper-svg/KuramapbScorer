@@ -493,3 +493,12 @@ button { font: inherit; color: inherit; }
 .hours-banner.off, .hours-line.off { background: rgba(255,181,71,.08); border-color: rgba(255,181,71,.4); color: #ffd79a; }
 .hours-line { margin: 0; font-size: 12px; padding: 7px 10px; }
 .hours-line.hidden { display: none; }
+
+/* Live "online now" status (lobby + QR screen) */
+.live-stats { margin: 0; display: inline-flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: .35em .6em; padding: .55em 1.1em; border-radius: 999px; background: rgba(57,255,20,.07); border: 1px solid rgba(57,255,20,.3); color: #cfe9cf; font-size: clamp(12px, 1.8vh, 18px); letter-spacing: .04em; }
+.live-stats.hidden { display: none; }
+.live-stats b { color: #fff; font-weight: 700; }
+.live-stats i { font-style: normal; color: rgba(255,255,255,.35); }
+.live-stats .lv-dot { width: .6em; height: .6em; border-radius: 50%; background: #39ff14; box-shadow: 0 0 0 0 rgba(57,255,20,.6); animation: lvPulse 1.8s infinite; }
+@keyframes lvPulse { 70% { box-shadow: 0 0 0 .55em rgba(57,255,20,0); } 100% { box-shadow: 0 0 0 0 rgba(57,255,20,0); } }
+.pair-text .live-stats { align-self: flex-start; }
