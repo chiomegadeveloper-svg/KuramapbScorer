@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>DinkyKong Pickleball Scorer — Remote</title>
 <meta name="theme-color" content="#0b1228">
+<meta name="apple-mobile-web-app-title" content="DinkyKong PB">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -36,6 +37,7 @@
     <input class="code-input" id="codeIn" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CODE" inputmode="text">
     <div class="err" id="joinErr"></div>
     <button class="big-btn ghost" id="joinBtn">Connect</button>
+    <button class="install-pill hidden" id="installApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Install the app on this phone</button>
   </section>
 
   <!-- Controller -->
@@ -108,6 +110,7 @@
     <div class="sheet-actions">
       <button class="big-btn ghost" id="unpair">Change screen</button>
       <button class="big-btn ghost" id="toDisplay" style="grid-column:1/-1">Use this device as the scoreboard</button>
+      <button class="big-btn ghost hidden" id="installApp2" style="grid-column:1/-1">Install the app on this phone</button>
       <button class="big-btn" id="newMatch">Start new match</button>
     </div>
     <p class="note">Player 1 starts in the right-hand court. Names and colors update without resetting the score; “Swap court positions” fixes the scoreboard if partners lined up the other way. Starting a new match resets the score.</p>

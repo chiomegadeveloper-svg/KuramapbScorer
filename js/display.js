@@ -9,6 +9,8 @@
   let state = store.get('aopb.state', null);
   if (!state || state.v !== 1) state = E.newMatch();
   state = E.ensure(state);
+  // A refresh after a finished match starts a fresh match (same names & settings) instead of sticking on the winner screen
+  if (state.matchOver) { state = E.newMatch(state.settings); store.set('aopb.state', state); }
 
   let code = store.get('aopb.code', null);
   if (!code) { code = PBLink.makeCode(); store.set('aopb.code', code); }
@@ -305,6 +307,9 @@
     const stopAnim = () => { const v = $('dkVideo'); if (v && v.pause) { v.pause(); v.removeAttribute('src'); v.load(); } };
     const pickDisplay = () => { clearInterval(t); stopAnim(); try { sessionStorage.setItem('aopb.tabRole', 'display'); } catch (e) {} try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} el.classList.add('hidden'); keepAwake(); };
     $('asDisplay').onclick = pickDisplay;
+    const pause = () => { clearInterval(t); $('chooserCount').textContent = 'Choose Scoreboard or Remote'; };
+    PBCommon.installButton($('installApp'), { onHelp: (h) => { pause(); const p = $('installHelp'); p.textContent = h; p.classList.remove('hidden'); } });
+    $('installApp').addEventListener('click', pause);
     $('asRemote').onclick = () => { clearInterval(t); try { localStorage.setItem('aopb.role', 'remote'); } catch (e) {} location.href = 'remote.html?scan=1'; };
     el.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowDown') $('asRemote').focus(); if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') $('asDisplay').focus(); e.stopPropagation(); });
     const start = () => {
@@ -323,7 +328,7 @@
   renderLicense();
   render();
   drawQr();
-  showPair(!licensed());   // after a refresh with an active pass, go straight back to the scoreboard
+  showPair(true);          // every refresh shows the pairing QR; it hides itself when a remote (re)connects
   keepAwake();
   Promise.allSettled([loadScript(LIBS.qr), loadScript(LIBS.peer)]).then(() => { drawQr(); startLink(); });
 })();

@@ -18,7 +18,7 @@ Packages: PHP 50 / 24 h · PHP 150 / 3 days · PHP 300 / 1 week · PHP 800 / 1 m
 1. Player signs in with Google on the phone → no pass → **Buy a pass** → picks a package.
 2. Pays with the InstaPay QR (`icons/instapay-qr.png`) from any bank / GCash / Maya.
 3. Types the **last 6 digits** of the reference → request goes to the owner.
-4. Owner opens `/admin.html` → **Payments to check** → matches amount + last 6 digits → **Approve** (or Reject).
+4. Owner opens `/owner/` (old `/admin.html` redirects there) → **Payments to check** → matches amount + last 6 digits → **Approve** (or Reject).
 5. The phone unlocks by itself; time starts at the first scoreboard scan.
 One account per purchase, one phone per account: the first phone used is locked to the account.
 Owner can **reset the phone lock** in the Users table if a player changes phones.

@@ -18,6 +18,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>DinkyKong Pickleball Scorer — Display</title>
 <meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-title" content="DinkyKong PB">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -42,6 +43,8 @@
     <button class="chooser-opt" id="asRemote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><b>Remote</b><span>Phone · scan the scoreboard</span></button>
   </div>
   <p class="chooser-count" id="chooserCount">Starting as Scoreboard in 30 s</p>
+  <button class="install-pill hidden" id="installApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Install app on this phone, TV or laptop</button>
+  <p class="install-help hidden" id="installHelp"></p>
 </div>
 <main class="display" id="display">
   <header class="d-top">

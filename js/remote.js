@@ -388,4 +388,7 @@
     if (code && code.length === 6) join(code); else { showJoin(); if (wantScan) startScan(); }
   });
   renderCtrl();
+  /* Install the remote as an app on this phone */
+  PBCommon.installButton($('installApp'), { onHelp: (h) => { $('joinErr').textContent = h; } });
+  PBCommon.installButton($('installApp2'), { onHelp: (h) => { alert(h); } });
 })();

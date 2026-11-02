@@ -103,5 +103,30 @@
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, 5000);
   })();
 
-  window.PBCommon = { seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc };
+  /* "Install app" helper: wires any button to the browser's install prompt, with iPhone / TV / menu fallbacks. */
+  let deferredInstall = null; const installBtns = [];
+  const isStandalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; installBtns.forEach((f) => f()); });
+  window.addEventListener('appinstalled', () => { deferredInstall = null; installBtns.forEach((f) => f(true)); });
+  function installHelp() {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'On iPhone / iPad (Safari): tap the Share button, then “Add to Home Screen”.';
+    if (/Safari/.test(ua) && !/Chrome|Chromium|Edg|Android/.test(ua)) return 'In Safari on Mac: choose File › “Add to Dock”.';
+    if (/Android TV|AFT|SmartTV|SMART-TV|Tizen|Web0S|webOS|BRAVIA|GoogleTV/i.test(ua)) return 'On a TV: open the browser menu and choose “Add to home” or “Bookmark”, or just keep this page open full screen. On a laptop or phone use Chrome or Edge to install.';
+    if (/Firefox/.test(ua)) return 'Firefox can’t install apps on most devices. Open this page in Chrome or Edge, then tap “Install app”.';
+    return 'Open the browser menu (⋮ or the install icon in the address bar) and choose “Install app” or “Add to Home screen”.';
+  }
+  function installButton(btn, opts) {
+    if (!btn) return;
+    opts = opts || {};
+    const update = (done) => { btn.classList.toggle('hidden', !!done || isStandalone()); };
+    installBtns.push(update); update();
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (deferredInstall) { const p = deferredInstall; deferredInstall = null; p.prompt(); try { const r = await p.userChoice; if (r.outcome === 'accepted') update(true); } catch (err) {} return; }
+      (opts.onHelp || alert)(installHelp());
+    });
+  }
+
+  window.PBCommon = { seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc, installButton, installHelp, isStandalone };
 })();

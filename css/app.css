@@ -151,6 +151,7 @@ button { font: inherit; color: inherit; }
 .pair-status { font-size: 2.2vh; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--ink-2); min-height: 1.2em; }
 .pair-status.ok { color: var(--ok); }
 .pair-status.bad { color: var(--danger); }
+#pairOverlay { z-index: 11; }
 .overlay.denied { z-index: 12; background: rgba(30, 2, 6, .88); }
 .overlay.denied h1 { color: var(--danger); font-size: 14vh; }
 .overlay.denied .hint { font-size: 3vh; text-transform: none; letter-spacing: .04em; color: var(--ink); max-width: 70vw; line-height: 1.4; }
@@ -434,3 +435,14 @@ button { font: inherit; color: inherit; }
 @keyframes dkGlow { 0%, 100% { opacity: .75; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
 @media (max-height: 560px) { .dk-anim { width: min(40vh, 50vw); margin-top: 0; } }
 @media (prefers-reduced-motion: reduce) { .dk-glow { animation: none; } }
+
+/* Install app pill (lobby + remote) */
+.install-pill { display: inline-flex; align-items: center; gap: .6em; margin-top: 1.6vh; padding: .7em 1.3em; border-radius: 999px; border: 1px solid rgba(0, 229, 255, .45); background: rgba(0, 229, 255, .08); color: var(--ink, #e8ecff); font: 600 clamp(13px, 1.8vh, 18px) 'Josefin Sans', system-ui, sans-serif; letter-spacing: .03em; cursor: pointer; align-self: center; }
+.install-pill svg { width: 1.2em; height: 1.2em; color: #00E5FF; }
+.install-pill:hover, .install-pill:focus-visible { background: rgba(0, 229, 255, .18); outline: none; border-color: #00E5FF; }
+.install-pill.hidden, .install-help.hidden { display: none; }
+.install-help { margin: 1vh auto 0; max-width: min(560px, 88vw); text-align: center; font-size: clamp(13px, 1.7vh, 17px); line-height: 1.45; color: var(--ink-2, #aab3cc); }
+.chooser { overflow-y: auto; }
+.chooser .install-pill { margin-top: -1vh; }
+.chooser .install-help { margin-top: -2vh; }
+.chooser:has(.install-help:not(.hidden)) .dk-anim { width: min(36vh, 56vw); }
