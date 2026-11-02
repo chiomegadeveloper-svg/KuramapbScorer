@@ -146,7 +146,7 @@
       if (res.reason === 'NO_CREDITS') { showDenied('Access denied', 'No active pass on ' + who + '. Buy a pass on your phone, then scan again.'); setPairMsg('Denied: no pass on ' + who, 'bad'); }
       else if (res.reason === 'OTHER_DEVICE') { showDenied('Access denied', who + ' is locked to another phone. Passes cannot be shared.'); setPairMsg('Denied: account locked to another phone', 'bad'); }
       else if (res.reason === 'NOT_SIGNED_IN') setPairMsg('Phone connected · waiting for Google sign-in');
-      else { showDenied('Could not verify', 'Check the internet connection and try again.'); setPairMsg('Verification failed', 'bad'); }
+      else setPairMsg('Choose a pass on your phone to start');
     }
   }
 

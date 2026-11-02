@@ -9,6 +9,11 @@
   function fmt(d) { return d ? new Date(d).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
   function msg(t, kind) { const m = $('tMsg'); m.textContent = t; m.className = 'msg ' + (kind || ''); }
 
+  // Copy each column header onto its cells so tables can become cards on phones
+  function labelCells(tbodyId) {
+    const tb = $(tbodyId); const table = tb.closest('table'); const heads = table.querySelectorAll('thead th');
+    tb.querySelectorAll('tr').forEach((tr) => [...tr.children].forEach((td, i) => { if (!td.hasAttribute('colspan')) td.setAttribute('data-label', heads[i] ? heads[i].textContent : ''); }));
+  }
   function renderUsers() {
     const q = $('search').value.trim().toLowerCase();
     const list = users.filter((u) => !q || (u.email || '').includes(q) || (u.full_name || '').toLowerCase().includes(q));
@@ -23,6 +28,7 @@
         '<td><div class="quick">' + [[24, '+1 day'], [168, '+1 wk']].map(([n, l]) => '<button data-e="' + esc(u.email) + '" data-n="' + n + '">' + l + '</button>').join('') + '</div></td>' +
         '</tr>';
     }).join('') || '<tr><td colspan="5" style="color:var(--ink-3)">No users yet. Users appear after their first Google sign-in.</td></tr>';
+    labelCells('rows');
     $('rows').querySelectorAll('button[data-e]').forEach((b) => b.onclick = () => add(b.dataset.e, Number(b.dataset.n), 'Manual hours'));
     $('rows').querySelectorAll('button[data-reset]').forEach((b) => b.onclick = async () => {
       if (!confirm('Reset the phone lock? The user can then sign in on a new phone.')) return;
@@ -37,13 +43,16 @@
     pend.concat(recent).forEach((p) => { refCount[p.reference] = (refCount[p.reference] || 0) + 1; });
     const who = (id) => esc((byId[id] && (byId[id].email)) || id.slice(0, 8));
     $('pendCount').textContent = pend.length; $('pendCount').classList.toggle('zero', !pend.length);
+    if (window.__setPendingBadge) window.__setPendingBadge(pend.length);
     $('pending').innerHTML = pend.map((p) => '<tr><td>' + fmt(p.created_at) + '</td><td>' + who(p.user_id) + '</td><td>' + esc(p.package) + '</td>' +
       '<td class="num">PHP ' + p.amount_php + '</td><td><span class="ref">' + esc(p.reference) + '</span>' + (refCount[p.reference] > 1 ? '<span class="dup">same digits used before — check carefully</span>' : '') + '</td>' +
       '<td><div class="act"><button class="ok" data-ok="' + p.id + '">Approve</button><button class="no" data-no="' + p.id + '">Reject</button></div></td></tr>').join('') ||
       '<tr><td colspan="6" style="color:var(--ink-3)">Nothing to check right now.</td></tr>';
+    labelCells('pending');
     $('pending').querySelectorAll('[data-ok]').forEach((b) => b.onclick = () => review(Number(b.dataset.ok), true));
     $('pending').querySelectorAll('[data-no]').forEach((b) => b.onclick = () => review(Number(b.dataset.no), false));
     $('reviewed').innerHTML = recent.map((p) => '<tr><td>' + fmt(p.reviewed_at || p.created_at) + '</td><td>' + who(p.user_id) + '</td><td>' + esc(p.package) + ' · PHP ' + p.amount_php + '</td><td class="ref">' + esc(p.reference) + '</td><td class="' + (p.status === 'approved' ? 'pass-on' : '') + '" style="' + (p.status === 'rejected' ? 'color:var(--danger)' : '') + '">' + esc(p.status) + '</td></tr>').join('');
+    labelCells('reviewed');
   }
   async function review(id, ok) {
     const note = ok ? '' : (prompt('Reason for rejecting (optional):') || '');
@@ -62,6 +71,7 @@
       $('ledger').innerHTML = rows.map((r) => '<tr><td>' + fmt(r.created_at) + '</td><td>' + esc((byId[r.user_id] && byId[r.user_id].email) || r.user_id.slice(0, 8)) + '</td>' +
         '<td class="num ' + (r.delta > 0 ? 'delta-pos' : 'delta-neg') + '">' + (r.delta > 0 ? '+' : '') + r.delta + '</td><td>' + esc(r.reason) + '</td></tr>').join('') ||
         '<tr><td colspan="4" style="color:var(--ink-3)">No activity yet.</td></tr>';
+      labelCells('ledger');
     } catch (e) { msg('Could not load: ' + e.message, 'bad'); }
   }
 
@@ -98,5 +108,33 @@
     show('panel'); loadAll();
     if (!window._adminPoll) window._adminPoll = setInterval(loadAll, 30000);
   });
+  /* ---------- Install as an app ---------- */
+  PBCommon.registerSW();
+  let deferredInstall = null;
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const dismissed = PBCommon.store.get('aopb.installDismissed', 0) > Date.now() - 7 * 864e5;
+  function showInstall(hint) {
+    if (standalone || dismissed) return;
+    if (hint) $('installHint').textContent = hint;
+    $('installBar').classList.remove('hidden');
+  }
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; showInstall(); });
+  window.addEventListener('appinstalled', () => { $('installBar').classList.add('hidden'); msg('Owner app installed.', 'ok'); });
+  if (ios && !standalone) { $('installBtn').textContent = 'How?'; showInstall('On iPhone/iPad: tap the Share button, then “Add to Home Screen”.'); }
+  $('installBtn').onclick = async () => {
+    if (deferredInstall) { deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; $('installBar').classList.add('hidden'); }
+    else if (ios) alert('Tap the Share button (square with an arrow) at the bottom of Safari, then choose “Add to Home Screen”.');
+    else alert('Open your browser menu (⋮) and choose “Install app” or “Add to Home screen”.');
+  };
+  $('installX').onclick = () => { $('installBar').classList.add('hidden'); PBCommon.store.set('aopb.installDismissed', Date.now()); };
+
+  // Pending count on the app icon / tab title
+  const baseTitle = document.title;
+  window.__setPendingBadge = (n) => {
+    document.title = n ? '(' + n + ') ' + baseTitle : baseTitle;
+    try { if ('setAppBadge' in navigator) { n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } } catch (e) {}
+  };
+
   PBAuth.init().catch((e) => { $('whoTxt').textContent = 'Error'; msg(String(e.message || e), 'bad'); });
 })();

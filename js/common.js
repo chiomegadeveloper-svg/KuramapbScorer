@@ -94,5 +94,14 @@
 
   function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+  // Splash screen: DinkyKong logo for 5 seconds, then fade out
+  (function splash() {
+    const el = document.getElementById('splash'); if (!el) return;
+    let seen = false; try { seen = el.dataset.once && sessionStorage.getItem('aopb.splash'); } catch (e) {}
+    if (seen) { el.remove(); return; }
+    try { if (el.dataset.once) sessionStorage.setItem('aopb.splash', '1'); } catch (e) {}
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, 5000);
+  })();
+
   window.PBCommon = { seg, loadScript, LIBS, keepAwake, registerSW, store, ICON, PALETTE, esc };
 })();

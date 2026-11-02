@@ -15,7 +15,7 @@
   let lastAuthSend = 0;
   let device = store.get('aopb.device', null);
   if (!device) { device = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join(''); store.set('aopb.device', device); }
-  let lastDenied = null, pollT = null;
+  let lastDenied = null, pollT = null, authRetries = 0;
 
   const params = new URLSearchParams(location.search);
   let code = PBLink.normCode(params.get('c') || store.get('aopb.remoteCode', ''));
@@ -76,23 +76,28 @@
     gateState = state;
     const g = $('gate'); opts = opts || {};
     g.classList.toggle('hidden', !state);
-    g.classList.toggle('bad', state === 'denied');
+    const locked = state === 'denied' && opts.reason === 'OTHER_DEVICE';
+    const offer = state === 'denied' && !locked;   // no pass (or a hiccup) → show packages, never a dead end
+    g.classList.toggle('bad', locked);
+    g.classList.toggle('offer', offer);
     $('gateGoogle').classList.toggle('hidden', state !== 'signin');
-    $('gateRetry').classList.toggle('hidden', state !== 'denied');
-    $('gateSwitch').classList.toggle('hidden', state !== 'denied');
-    $('gateBuy').classList.toggle('hidden', !(state === 'denied' && opts.reason === 'NO_CREDITS'));
+    $('gateRetry').classList.toggle('hidden', !locked);
+    $('gateSwitch').classList.toggle('hidden', !locked);
+    $('gateBuy').classList.add('hidden');
+    $('gatePkgs').classList.toggle('hidden', !offer);
+    $('gateAlready').classList.toggle('hidden', !offer);
+    $('gateMark').classList.toggle('hidden', offer);
+    if (offer) renderGatePkgs();
     if (state === 'denied') { lastDenied = opts; refreshPending(); } else $('gatePending').classList.add('hidden');
     const p = PBAuth.profile;
-    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google. Each sign-in starts a 24-hour pass that uses 1 credit, so buy credits first.'; }
-    if (state === 'checking') { $('gateTitle').textContent = 'Checking credits…'; $('gateBody').textContent = 'The scoreboard is verifying your account.'; }
+    if (state === 'signin') { $('gateTitle').textContent = 'Sign in to start scoring'; $('gateBody').textContent = 'Continue with Google, then choose a pass — from PHP 50 for 24 hours.'; }
+    if (state === 'checking') { $('gateTitle').textContent = 'Checking your pass…'; $('gateBody').textContent = 'One moment.'; }
     if (state === 'denied') {
       const who = opts.email || (p && p.email) || 'This account';
-      $('gateTitle').textContent = opts.reason === 'NO_CREDITS' ? 'No active pass' : opts.reason === 'OTHER_DEVICE' ? 'Locked to another phone' : 'Access denied';
-      $('gateBody').textContent = opts.reason === 'NO_CREDITS'
-        ? who + ' has no scoring time left. Buy a pass — from PHP 50 for 24 hours.'
-        : opts.reason === 'OTHER_DEVICE'
+      $('gateTitle').textContent = locked ? 'Locked to another phone' : 'Choose a pass to start';
+      $('gateBody').textContent = locked
         ? who + ' is already used on another phone. Passes work on one account and one phone only. Ask the owner to reset the phone lock if you changed phones.'
-        : 'The scoreboard could not verify your account. Check your internet and try again.';
+        : 'Signed in as ' + who + '. Pick a package, pay with InstaPay, and the scoreboard unlocks once the owner approves.';
       if (opts.reason === 'OTHER_DEVICE') $('gateBody').textContent += ' Email dinkykongsupport@gmail.com.';
     }
     renderCtrl();
@@ -110,8 +115,12 @@
   }
 
   function onLinkMessage(m) {
-    if (m.t === 'authok') { authed = true; setGate(null); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
-    else if (m.t === 'denied') { authed = false; setGate('denied', m); buzz([80, 60, 80]); }
+    if (m.t === 'authok') { authRetries = 0; authed = true; setGate(null); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
+    else if (m.t === 'denied') {
+      authed = false;
+      if (m.reason === 'ERROR' && authRetries < 2) { authRetries++; setTimeout(() => sendAuth(true), 2500); return; }
+      authRetries = 0; setGate('denied', m); if (m.reason === 'OTHER_DEVICE') buzz([80, 60, 80]);
+    }
     else if (m.t === 'reauth' || m.t === 'needauth') { authed = false; sendAuth(); }
   }
 
@@ -125,6 +134,11 @@
     $('pkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b><small>' + k.hours + ' hours of scoring</small></button>').join('');
     $('pkgs').querySelectorAll('.pkg').forEach((b) => b.onclick = () => choose(b.dataset.c));
     renderMine();
+  }
+  async function renderGatePkgs() {
+    if (!pkgList.length) pkgList = await PBAuth.packages();
+    $('gatePkgs').innerHTML = pkgList.map((k) => '<button class="pkg" data-c="' + esc(k.code) + '"><span>' + esc(k.label) + '</span><b>' + php(k.price_php) + '</b></button>').join('');
+    $('gatePkgs').querySelectorAll('.pkg').forEach((b) => b.onclick = async () => { await openShop(); choose(b.dataset.c); });
   }
   function choose(codeP) {
     chosen = pkgList.find((k) => k.code === codeP); if (!chosen) return;
@@ -152,6 +166,7 @@
   $('shopX').onclick = () => $('shop').classList.add('hidden');
   $('shop').addEventListener('click', (e) => { if (e.target.id === 'shop') $('shop').classList.add('hidden'); });
   $('gateBuy').onclick = openShop;
+  $('gateAlready').onclick = async () => { await PBAuth.refresh(); refreshPending(); sendAuth(true); };
   $('accBuy').onclick = () => { closeSheet(); openShop(); };
   async function renderMine() {
     const list = await PBAuth.myPurchases();
@@ -164,6 +179,7 @@
     const pend = list.filter((p) => p.status === 'pending');
     const el = $('gatePending');
     el.classList.toggle('hidden', !pend.length || gateState !== 'denied');
+    if (pend.length && gateState === 'denied') { $('gateTitle').textContent = 'Payment being checked'; }
     el.textContent = pend.length ? pend.length + ' payment' + (pend.length > 1 ? 's' : '') + ' waiting for the owner’s approval (5 minutes to 2 hours). This screen will unlock by itself.' : '';
     if (pend.length) startPoll();
   }
@@ -280,7 +296,7 @@
     const single = draft.mode === 'singles';
     document.querySelectorAll('.pl2, .dbl-only').forEach((el) => el.classList.toggle('hidden', single));
     document.querySelectorAll('.player-row').forEach((el) => el.classList.toggle('single', single));
-    $('pA0').placeholder = $('pB0').placeholder = single ? 'Player name' : 'Player 1 (starts right)';
+    $('pA0').placeholder = $('pB0').placeholder = single ? 'Player name' : 'Player 1';
   }
   function openSheet() {
     const base = st ? st.settings : PBEngine.DEFAULT_SETTINGS;

@@ -86,7 +86,7 @@ button { font: inherit; color: inherit; }
 .team-name { font-family: var(--font-score); font-size: 6vh; letter-spacing: .08em; line-height: 1; text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-top: .1em; }
 .team { grid-template-rows: auto minmax(0, 1fr) auto !important; }
 .team-score { width: 100%; height: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; color: var(--c); transition: transform .2s; padding: .4vh 0; }
-.team-score .seg7 { height: 100%; max-height: 66vh; width: auto; max-width: 100%; }
+.team-score .seg7 { height: min(50vh, 30vw); width: auto; max-width: 100%; }
 
 /* Seven-segment LED */
 .seg7 { display: block; overflow: visible; }
@@ -163,7 +163,7 @@ button { font: inherit; color: inherit; }
 /* Portrait tablets: stack the two teams */
 @media (orientation: portrait) {
   .court { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; gap: 1.2vh; }
-  .team-score .seg7 { max-height: 31vh; }
+  .team-score .seg7 { height: min(18vh, 50vw); }
   .team-name { font-size: 4.6vh; }
   .d-top { grid-template-columns: 1fr auto; }
   .d-meta { grid-column: 1 / -1; grid-row: 2; justify-self: center; font-size: 1.6vh; }
@@ -324,3 +324,78 @@ button { font: inherit; color: inherit; }
 .overlay.denied .support-tv { font-size: 2.2vh; color: var(--ink-2); margin-top: 1vh; }
 
 .legal{font-size:1.4vh;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}.legal a{color:var(--ink-3);text-decoration:none}
+
+.gate.offer { justify-content: flex-start; padding-top: 18px; }
+.gate.offer h2 { color: var(--ball); }
+.gate .pkgs .pkg { text-align: center; align-items: center; padding: 14px 8px; }
+.gate .pkgs .pkg b { font-size: 26px; }
+
+/* ===== Responsive fixes ===== */
+.overlay { overflow-y: auto; padding: 2vh 0; }
+.pair-text h1 { font-size: min(8vh, 4.6vw); }
+.code { font-size: min(9vh, 7vw); }
+@media (orientation: portrait) {
+  .pair-card { padding: 3vh 5vw; gap: 2.4vh; margin: auto 0; }
+  .qr-box canvas, .qr-box img, .qr-box svg { width: min(34vh, 62vw); height: min(34vh, 62vw); }
+  .pair-text h1 { font-size: min(5vh, 8.5vw); }
+  .pair-text p { font-size: min(2vh, 3.8vw); }
+  .code { font-size: min(7vh, 10.5vw); letter-spacing: .22em; }
+  .btn { font-size: min(1.8vh, 3.2vw); padding: 1.2vh 2.2vh; }
+  .serve-tag { font-size: min(2.2vh, 3.4vw); }
+  .serve-tag .ball { width: min(4vh, 6vw); height: min(4vh, 6vw); }
+  .d-status { flex-wrap: wrap; justify-content: flex-end; gap: 1vh; }
+  .winner h1 { font-size: min(14vh, 15vw); }
+  .overlay.denied h1 { font-size: min(10vh, 12vw); }
+  .toast { font-size: min(8vh, 10vw); }
+}
+@media (orientation: portrait) and (max-width: 600px) {
+  #passChip { display: none !important; }
+  .d-top { padding: 1.4vh 3vw; }
+  .chip { font-size: 11px; }
+  .team-name { font-size: min(4.2vh, 8vw); }
+  .pl { font-size: min(2.2vh, 3.6vw); }
+}
+/* Short landscape screens (phones turned sideways) */
+@media (orientation: landscape) and (max-height: 520px) {
+  .d-top { padding: 1vh 2vw; }
+  .team { padding: 1.5vh 1.5vw; }
+  .team-name { font-size: 7vh; }
+  .team-score .seg7 { height: min(46vh, 30vw); }
+  .keys { display: none; }
+  .pair-card { padding: 3vh 4vw; gap: 4vw; }
+  .qr-box canvas, .qr-box img, .qr-box svg { width: min(60vh, 34vw); height: min(60vh, 34vw); }
+  .pair-text { gap: 1.6vh; }
+  .pair-text p { font-size: 3.4vh; }
+  /* remote in landscape */
+  .remote { max-width: none; padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .rally-btns { min-height: 150px; }
+  .rally { padding: 10px; }
+  .rally .lbl { display: none; }
+}
+/* Remote: small phones */
+@media (max-width: 380px) {
+  .remote { padding-left: 10px; padding-right: 10px; gap: 10px; }
+  .brand-sm { font-size: 11px; letter-spacing: .14em; }
+  .r-status { font-size: 10px; padding: 6px 9px; }
+  .r-side .s { height: 42px; }
+  .tool { font-size: 9.5px; letter-spacing: .08em; }
+  .account { grid-template-columns: auto 1fr; }
+  .account > div:last-child { grid-column: 1 / -1; }
+  .pkg b { font-size: 26px; }
+}
+/* Remote: tablets — keep controls a comfortable size */
+@media (min-width: 700px) {
+  .remote { max-width: 620px; }
+  .rally-btns { max-height: 560px; }
+}
+.account > div:last-child { flex-wrap: wrap; }
+
+/* Splash */
+.splash { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4vh;
+  background: radial-gradient(60% 50% at 50% 45%, #2a0f4a 0%, #0b0518 60%, #050209 100%); transition: opacity .6s ease; }
+.splash img { width: min(62vmin, 520px); height: auto; image-rendering: pixelated; animation: splashIn .9s cubic-bezier(.2,1.3,.4,1) both; filter: drop-shadow(0 2vh 5vh rgba(0,0,0,.6)); }
+.splash-bar { width: min(40vmin, 300px); height: 6px; border-radius: 6px; background: rgba(255,214,0,.18); overflow: hidden; }
+.splash-bar i { display: block; height: 100%; width: 0; background: #ffd600; border-radius: 6px; animation: splashBar 5s linear forwards; }
+.splash.out { opacity: 0; pointer-events: none; }
+@keyframes splashIn { from { opacity: 0; transform: scale(.85) translateY(2vh); } to { opacity: 1; transform: none; } }
+@keyframes splashBar { to { width: 100%; } }

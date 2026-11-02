@@ -6,7 +6,13 @@
 <title>PB Scorer Admin</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#060a16">
-<link rel="icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/admin-192.png">
+<link rel="manifest" href="admin.webmanifest">
+<link rel="apple-touch-icon" href="icons/admin-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PB Owner">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Josefin+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -37,6 +43,31 @@
   .center { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
   .center p { color: var(--ink-2); max-width: 420px; line-height: 1.5; }
   .delta-pos { color: var(--ok); } .delta-neg { color: var(--ink-2); }
+  .install-bar { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1px solid rgba(57,255,20,.35); background: rgba(57,255,20,.06); }
+  .install-bar.hidden { display: none; }
+  .install-bar img { width: 44px; height: 44px; border-radius: 12px; }
+  .install-bar b { display: block; font-size: 15px; }
+  .install-bar span { display: block; font-size: 13px; color: var(--ink-2); line-height: 1.4; }
+  .install-bar .big-btn { padding: 10px 18px; font-size: 13px; }
+  .admin h1 { font-size: clamp(28px, 6vw, 40px); }
+  @media (max-width: 640px) {
+    .admin { padding: 16px 12px 48px; gap: 14px; }
+    .card { padding: 14px; }
+    .install-bar { grid-template-columns: auto 1fr auto; }
+    .install-bar .big-btn { grid-column: 1 / -1; }
+    .topup { grid-template-columns: 1fr 1fr; }
+    .topup .text-in:first-child, .topup .big-btn { grid-column: 1 / -1; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; }
+    tr { border: 1px solid var(--line); border-radius: 14px; padding: 6px 12px; margin-bottom: 10px; background: rgba(255,255,255,.02); }
+    td { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 0; padding: 7px 0; text-align: right; }
+    td::before { content: attr(data-label); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; text-align: left; flex: none; }
+    td[data-label=""]::before, td:not([data-label])::before { display: none; }
+    td[colspan] { justify-content: flex-start; text-align: left; }
+    .u { justify-content: flex-end; text-align: right; }
+    .act { width: 100%; } .act button { flex: 1; padding: 12px; }
+    td:has(.act) { padding-top: 10px; }
+  }
   .pill { font-family: var(--font-ui); font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: #ffb547; color: var(--navy-950); }
   .pill.zero { background: var(--navy-700); color: var(--ink-2); }
   .ref { font-family: ui-monospace, Menlo, monospace; font-size: 16px; font-weight: 700; letter-spacing: .12em; }
@@ -52,6 +83,13 @@
     <h1>PB Scorer · Owner</h1>
     <div class="r-status" id="who" style="cursor:default"><span class="dot"></span><span id="whoTxt">Loading…</span></div>
   </header>
+
+  <div class="install-bar hidden" id="installBar">
+    <img src="icons/admin-192.png" alt="">
+    <div><b>Install the Owner app</b><span id="installHint">Get payment alerts at a glance and open the owner page in one tap.</span></div>
+    <button class="big-btn" id="installBtn">Install</button>
+    <button class="close-x" id="installX" aria-label="Dismiss">×</button>
+  </div>
 
   <section class="center hidden" id="needLogin">
     <img src="icons/kurama-mark.png" alt="" style="width:72px">
@@ -80,7 +118,7 @@
         <tbody id="pending"></tbody>
       </table></div>
       <details style="margin-top:12px"><summary class="note" style="cursor:pointer">Recently reviewed</summary>
-        <div class="table-wrap"><table><tbody id="reviewed"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>When</th><th>User</th><th>Package</th><th>Ref</th><th>Status</th></tr></thead><tbody id="reviewed"></tbody></table></div>
       </details>
     </div>
 
