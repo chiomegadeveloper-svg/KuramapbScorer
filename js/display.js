@@ -123,7 +123,12 @@
   function showDenied(title, body) {
     $('deniedTitle').textContent = title; $('deniedBody').textContent = body;
     $('deniedOverlay').classList.remove('hidden');
-    clearTimeout(showDenied.t); showDenied.t = setTimeout(() => $('deniedOverlay').classList.add('hidden'), 9000);
+    showPair(true);   // the QR page sits underneath, so the board is ready for the next scan
+    clearTimeout(showDenied.t);
+    showDenied.t = setTimeout(() => {   // short notice, then back to the QR page
+      $('deniedOverlay').classList.add('hidden');
+      if (!licensed()) { showPair(true); setPairMsg('No scoring time yet? Support DinkyKong on your phone, then scan again'); }
+    }, 5000);
   }
 
   async function onRemoteMessage(msg, reply, id) {

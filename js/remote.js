@@ -92,6 +92,7 @@
     $('gateSwitch').classList.toggle('hidden', !locked);
     $('gateBuy').classList.add('hidden');
     $('gatePkgs').classList.toggle('hidden', !offer);
+    $('gateFund').classList.toggle('hidden', !(offer || state === 'signin'));
     $('gateAlready').classList.toggle('hidden', !offer);
     $('gateMark').classList.toggle('hidden', offer);
     if (offer) renderGatePkgs();

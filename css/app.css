@@ -458,3 +458,32 @@ button { font: inherit; color: inherit; }
 .overlay.bye h1 { font-size: min(12vh, 11vw); color: var(--ball, #39ff14); }
 .overlay.bye .hint { text-transform: none; letter-spacing: .04em; }
 .bye-logo { width: min(26vh, 40vw); margin: 0 auto 2vh; display: block; }
+.gate-fund { text-align: left; margin: 4px 0 8px; }
+
+/* Sign-in / donation gate: one compact screen, no scrolling */
+#ctrl:has(#gate:not(.hidden)) > .r-board,
+#ctrl:has(#gate:not(.hidden)) > .rally-btns,
+#ctrl:has(#gate:not(.hidden)) > .next-game,
+#ctrl:has(#gate:not(.hidden)) > .r-row { display: none !important; }
+.remote:has(#gate:not(.hidden)) { height: 100dvh; min-height: 0; overflow: hidden; }
+.gate { gap: 10px; padding: 16px 14px; overflow: hidden; }
+.gate .mark { width: 52px; margin-bottom: 0; }
+.gate h2 { font-size: clamp(24px, 4.2vh, 32px); line-height: 1.05; }
+.gate p { font-size: 13.5px; line-height: 1.4; }
+.gate.offer { justify-content: center; padding-top: 16px; }
+.gate .gate-fund { margin: 0; padding: 10px 12px; }
+.gate .gate-fund > b { font-size: 14px; margin-bottom: 2px; }
+.gate .gate-fund p { font-size: 12.5px; line-height: 1.4; }
+.gate .pkgs { gap: 8px; }
+.gate .pkgs .pkg { padding: 9px 6px; gap: 1px; border-radius: 14px; }
+.gate .pkgs .pkg b { font-size: 23px; }
+.gate .pkgs .pkg span { font-size: 11.5px; }
+.gate .mini-btn { padding: 8px 14px; }
+.gate .support { font-size: 12px; margin-top: 0; }
+@media (max-height: 700px) {
+  .gate { gap: 7px; padding: 12px 12px; }
+  .gate .mark { display: none; }
+  .gate p { font-size: 12.5px; }
+  .gate .gate-fund p { font-size: 11.5px; }
+  .gate .pkgs .pkg b { font-size: 20px; }
+}
