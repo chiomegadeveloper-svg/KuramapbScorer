@@ -629,3 +629,7 @@ body.mode-act #ctrl > .r-board, body.mode-act #ctrl > .rally-btns, body.mode-act
 .act-done .big-btn { width: 100%; max-width: 320px; }
 body.mode-live .r-head .brand-sm span::after { content: 'LIVE'; margin-left: 8px; font-size: .8em; color: #fff; background: #ff2e4d; border-radius: 4px; padding: 2px 5px 1px; letter-spacing: .1em; }
 .pkgs .pkg:only-child { grid-column: 1 / -1; }
+
+.act-done .act-note { font-size: 13px; color: var(--ink-3); }
+.act-done .big-btn.act-exit { background: #ff2e4d; color: #fff; }
+.act-done .mini-btn { align-self: center; }

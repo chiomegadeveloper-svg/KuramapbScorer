@@ -68,6 +68,7 @@
   }
   function join(c) {
     leaving = false;
+    $('joinTitle').textContent = 'Scan the scoreboard'; $('joinHint').textContent = 'Point your camera at the QR code on the TV or tablet.';
     code = PBLink.normCode(c);
     if (code.length !== 6) { $('joinErr').textContent = 'Codes are 6 characters.'; return; }
     if (scanMode) { setMode(scanMode); scanMode = null; } else setMode(mode);
@@ -523,6 +524,13 @@
     $('actUntil').textContent = t ? t.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'today';
     $('actDone').classList.remove('hidden');
   }
-  $('actDoneBtn').onclick = () => { leaveScreen(false, 'LIVE is on. To referee a court, scan that court’s QR code.'); };
+  $('actDoneBtn').onclick = () => { leaveScreen(false, 'LIVE is still on. To referee a court, scan that court’s QR code.'); };
+  $('actExitBtn').onclick = () => {
+    if (!confirm('Exit LIVE? The LIVE screen locks, its courts are cleared and it shows a new QR code for the next organizer. Your remaining LIVE time stays on your account.')) return;
+    leaveScreen(true, 'LIVE closed. Scan a QR code to continue.');   // tells the LIVE screen to lock
+    buzz([40, 60, 40]);
+    $('joinTitle').textContent = 'LIVE closed'; $('joinHint').textContent = 'The LIVE screen is locked and ready for the next organizer. Scan a QR code to continue.';
+    startScan();
+  };
   setMode(mode);
 })();

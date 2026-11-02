@@ -12,12 +12,15 @@
   const cfg = {
     n: Math.min(6, Math.max(2, saved.n || 4)),
     obsKey: saved.obsKey || rand(12),
-    actCode: saved.actCode || PBLink.makeCode(),
+    actCode: PBLink.makeCode(),   // new activation code every time the LIVE page opens
     courts: Array.isArray(saved.courts) ? saved.courts : []
   };
   // Lower third branding (organizer's own logo + caption). Kept separately; images are resized before saving.
   let brand = store.get('aopb.liveBrand', null) || { id: 'dk', logo: null, caption: '' };
-  let license = store.get('aopb.liveLicense', null);   // { until, email, name }
+  // The LIVE pass is never restored after a refresh: the screen always opens locked on the activation QR,
+  // so nobody can reuse the organizer's pass by reloading. (Trial codes can be re-entered on the same screen.)
+  let license = null;   // { until, email, name, trial }
+ 
   const liveOK = () => !AUTH || (license && new Date(license.until).getTime() > Date.now());
 
   function rand(n) { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; let s = ''; crypto.getRandomValues(new Uint8Array(n)).forEach((b) => { s += a[b % a.length]; }); return s; }
@@ -148,12 +151,13 @@
       getState: () => Object.assign(E.publicState(E.newMatch({ names: ['LIVE', 'ACTIVATION'] })), { liveAct: true }),
       onAction: (a, reply) => reply({ t: 'denied', reason: 'ACTIVATION_ONLY' }),
       onMessage: async (msg, reply) => {
+        if (msg.t === 'release') { exitLive(); return; }   // organizer tapped "Exit LIVE" on their phone
         if (msg.t !== 'auth') return;
         if (!AUTH) { reply({ t: 'authok', free: true, live: true }); return; }
         setActMsg('Checking LIVE pass…');
         let res; try { res = await PBAuth.verifyToken(msg.token, { device: msg.device, live: true }); } catch (e) { res = { ok: false, reason: 'ERROR' }; }
         if (res.ok) {
-          license = { until: res.until, email: res.email || '', name: res.name || '' }; store.set('aopb.liveLicense', license);
+          license = { until: res.until, email: res.email || '', name: res.name || '' };
           reply({ t: 'authok', live: true, until: res.until, name: res.name });
           setActMsg(''); renderLicense(); toast('LIVE ON · ' + String(res.name || res.email || '').split(' ')[0].toUpperCase());
           pushObs();
@@ -170,6 +174,27 @@
       }
     });
   }
+  /* ---------- Exit LIVE: lock the screen and get it ready for the next organizer ---------- */
+  function exitLive() {
+    license = null;
+    // referees are disconnected and every court gets a new code + a fresh match
+    courts.forEach((c) => {
+      try { c.link && c.link.broadcastMsg({ t: 'reset' }); } catch (e) {}
+      const old = c.link; setTimeout(() => { try { old && old.destroy(); } catch (e) {} }, 800);
+      c.link = null; c.code = PBLink.makeCode(); c.state = E.newMatch(); c.remotes = 0;
+    });
+    setTimeout(() => { courts.forEach((c) => { if (!c.link && linkReady) startCourtLink(c); renderCourt(c); }); renderAllQr(); }, 900);
+    brand = { id: rand(8), logo: null, caption: '' }; store.del('aopb.liveBrand'); renderBrand();
+    $('stripToggle').checked = false; applyStrip();
+    // new activation code so the previous organizer's phone can't switch it back on
+    const oldAct = actLink; cfg.actCode = PBLink.makeCode(); actLink = null;
+    setTimeout(() => { try { oldAct && oldAct.destroy(); } catch (e) {} startActLink(); renderAllQr(); }, 800);
+    ['qrOverlay', 'obsOverlay'].forEach((id) => $(id).classList.add('hidden'));
+    $('trialIn').value = ''; $('trialErr').textContent = '';
+    save(); setActMsg('LIVE was closed by the organizer · ready for the next organizer'); renderLicense(); pushObs();
+    toast('LIVE CLOSED');
+  }
+
   /* ---------- Trial code from the owner: 1 hour of LIVE, no sign-in ---------- */
   let screenId = store.get('aopb.screenId', null);
   if (!screenId) { screenId = 'scr-' + rand(16); store.set('aopb.screenId', screenId); }
@@ -183,7 +208,7 @@
     let res; try { res = await PBAuth.redeemLiveCode(code, screenId); } catch (e) { res = { ok: false, reason: 'ERROR' }; }
     $('trialBtn').disabled = false;
     if (res.ok) {
-      license = { until: res.until, email: 'Trial code', name: 'Trial', trial: true }; store.set('aopb.liveLicense', license);
+      license = { until: res.until, email: 'Trial code', name: 'Trial', trial: true };
       err.className = 'trial-err ok'; err.textContent = ''; $('trialIn').value = '';
       renderLicense(); pushObs(); toast('LIVE TRIAL · 1 HOUR');
     } else {
