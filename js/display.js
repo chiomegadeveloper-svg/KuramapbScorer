@@ -127,6 +127,7 @@
   }
 
   async function onRemoteMessage(msg, reply, id) {
+    if (msg.t === 'release') { restartBoard('exit'); return; }   // remote signed out / exited the scoreboard
     if (msg.t !== 'auth') return;
     if (!AUTH) { verified.add(id); reply({ t: 'authok', free: true }); return; }
     setPairMsg('Checking account…');
@@ -215,6 +216,7 @@
     if (st.state === 'online') {
       chip.classList.add(n ? 'ok' : 'warn');
       txt.textContent = n ? n + (n === 1 ? ' remote' : ' remotes') : 'Code ' + code;
+      if (st.joined) used = true;
       if (st.joined && AUTH && !licensed()) setPairMsg('Phone connected · waiting for Google sign-in');
       else if (st.joined && !everPaired) { everPaired = true; showPair(false); toast('REMOTE CONNECTED'); }
       else if (st.joined) toast('REMOTE CONNECTED');
@@ -239,6 +241,35 @@
     code = PBLink.makeCode(); store.set('aopb.code', code);
     drawQr(); startLink(); showPair(true);
   }
+
+  /* ---------- Restart for the next players ---------- */
+  // When the remote signs out or exits, or no remote is connected for 3 minutes, the board resets:
+  // new code, fresh match, pass cleared, back to the splash + lobby, then a new QR.
+  const IDLE_MS = 3 * 60 * 1000;
+  let used = false, restarting = false, aloneSince = 0;
+  function restartBoard(reason) {
+    if (restarting) return; restarting = true;
+    try { if (link) link.broadcastMsg({ t: 'reset' }); } catch (e) {}
+    store.del('aopb.license'); license = null; verified.clear();
+    store.set('aopb.state', E.newMatch());
+    store.set('aopb.code', PBLink.makeCode());
+    $('byeTitle').textContent = reason === 'idle' ? 'Scoreboard is free' : 'Thanks for playing!';
+    $('byeBody').textContent = reason === 'idle' ? 'No remote connected for 3 minutes · restarting for the next players…' : 'Remote signed out · restarting for the next players…';
+    $('idleBanner').classList.add('hidden');
+    $('byeOverlay').classList.remove('hidden');
+    setTimeout(() => { try { if (link) link.destroy(); } catch (e) {} location.replace('./'); }, 3000);
+  }
+  setInterval(() => {
+    const n = link ? link.remotes : 0;
+    const banner = $('idleBanner');
+    if (!used || restarting || n > 0) { aloneSince = 0; banner.classList.add('hidden'); return; }
+    if (!aloneSince) aloneSince = Date.now();
+    const left = IDLE_MS - (Date.now() - aloneSince);
+    if (left <= 0) { restartBoard('idle'); return; }
+    const sec = Math.ceil(left / 1000);
+    banner.textContent = 'No remote connected · scoreboard restarts in ' + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+    banner.classList.remove('hidden');
+  }, 1000);
 
   /* ---------- Fullscreen / UI ---------- */
   function fullscreen() {

@@ -7,7 +7,7 @@
 
   let st = null;        // last state from display
   let link = null;
-  let connected = false;
+  let connected = false, leaving = false;
   let draft = null;     // settings being edited in the sheet
   const AUTH = PBAuth.enabled;
   let authed = !AUTH;   // TV has accepted this phone's sign-in
@@ -29,6 +29,7 @@
 
   /* ---------- Status ---------- */
   function setStatus(s) {
+    if (leaving) return;
     if (s === 'connected' && !connected) setTimeout(sendAuth, 50);
     const el = $('status'), txt = $('statusTxt');
     el.classList.remove('ok', 'bad');
@@ -48,6 +49,7 @@
     $('statusTxt').textContent = 'Not paired';
   }
   function join(c) {
+    leaving = false;
     code = PBLink.normCode(c);
     if (code.length !== 6) { $('joinErr').textContent = 'Codes are 6 characters.'; return; }
     store.set('aopb.remoteCode', code); touch(); stopScan();
@@ -64,6 +66,7 @@
 
   /* ---------- State from display ---------- */
   function onState(s) {
+    if (leaving) return;
     touch();
     const prevEv = st && st.lastEvent ? st.lastEvent.t : 0;
     st = s;
@@ -119,6 +122,7 @@
   }
 
   function onLinkMessage(m) {
+    if (leaving) return;
     if (m.t === 'authok') { authRetries = 0; authed = true; setGate(null); PBAuth.refresh(); if (m.until) flash('Pass until ' + new Date(m.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })); buzz([30, 40, 30]); }
     else if (m.t === 'denied') {
       authed = false;
@@ -126,6 +130,19 @@
       authRetries = 0; setGate('denied', m); if (m.reason === 'OTHER_DEVICE') buzz([80, 60, 80]);
     }
     else if (m.t === 'reauth' || m.t === 'needauth') { authed = false; sendAuth(); }
+    else if (m.t === 'reset') { leaveScreen(false, 'The scoreboard restarted for new players. Scan its new QR code to play again.'); }
+  }
+
+  /* Leave the scoreboard: optionally tell it to restart for the next players, then go back to the scan screen. */
+  function leaveScreen(notify, msg) {
+    if (link && notify) { try { link.sendMsg({ t: 'release' }); } catch (e) {} }
+    leaving = true;
+    const l = link; link = null; st = null; connected = false; authed = false;
+    setTimeout(() => { try { l && l.destroy(); } catch (e) {} }, notify ? 600 : 0);
+    store.del('aopb.remoteCode'); code = '';
+    $('status').classList.remove('ok', 'bad');
+    history.replaceState(null, '', 'remote.html');
+    setGate(null); closeSheet(); showJoin(msg || '');
   }
 
   /* ---------- Support fund donation (InstaPay P2P, confirmed by the owner) ---------- */
@@ -202,7 +219,11 @@
   $('gateGoogle').onclick = () => PBAuth.signIn();
   $('gateRetry').onclick = async () => { await PBAuth.refresh(); sendAuth(true); };
   $('gateSwitch').onclick = async () => { await PBAuth.signOut(); PBAuth.signIn(); };
-  $('accOut').onclick = async () => { closeSheet(); await PBAuth.signOut(); authed = false; setGate('signin'); };
+  $('accOut').onclick = async () => {
+    if (!confirm('Sign out? The scoreboard will restart and show a new QR code for the next players.')) return;
+    leaveScreen(true, 'Signed out. The scoreboard is restarting for the next players.');
+    try { await PBAuth.signOut(); } catch (e) {}
+  };
 
   function renderAccount() {
     const p = PBAuth.profile, u = PBAuth.user;
@@ -331,7 +352,10 @@
   $('sheetX').onclick = closeSheet;
   $('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
   $('toDisplay').onclick = () => { try { localStorage.setItem('aopb.role', 'display'); } catch (e) {} store.del('aopb.remoteCode'); location.href = './?role=display'; };
-  $('unpair').onclick = () => { closeSheet(); if (link) link.destroy(); link = null; st = null; store.del('aopb.remoteCode'); code = ''; history.replaceState(null, '', 'remote.html'); showJoin(); };
+  $('unpair').onclick = () => {
+    if (!confirm('Exit this scoreboard? It will restart and show a new QR code for the next players.')) return;
+    leaveScreen(true, 'You left the scoreboard. It is restarting for the next players.');
+  };
 
   /* ---------- QR scanner ---------- */
   let scanStream = null, scanRaf = 0, detector = null;

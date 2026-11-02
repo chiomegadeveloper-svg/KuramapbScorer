@@ -450,3 +450,11 @@ button { font: inherit; color: inherit; }
 .fund-intro > b { display: block; font-size: 15px; color: #fff; margin-bottom: 4px; }
 .fund-intro p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
 .fund-intro p b { color: #39ff14; }
+
+/* Idle countdown + restart screen */
+.idle-banner { position: absolute; left: 50%; top: 9vh; transform: translateX(-50%); z-index: 9; padding: 1.1vh 2.6vh; border-radius: 999px; background: rgba(255,181,71,.14); border: 1px solid rgba(255,181,71,.55); color: #ffcf7a; font-size: clamp(13px, 2.2vh, 26px); letter-spacing: .06em; white-space: nowrap; }
+.idle-banner.hidden { display: none; }
+.overlay.bye { z-index: 14; background: rgba(5, 9, 22, .94); }
+.overlay.bye h1 { font-size: min(12vh, 11vw); color: var(--ball, #39ff14); }
+.overlay.bye .hint { text-transform: none; letter-spacing: .04em; }
+.bye-logo { width: min(26vh, 40vw); margin: 0 auto 2vh; display: block; }
