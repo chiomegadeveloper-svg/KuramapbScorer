@@ -257,9 +257,12 @@
     $('account').classList.toggle('hidden', !AUTH || !u);
     if (!u) return;
     $('accName').textContent = (p && p.full_name) || u.email;
-    const pass = PBAuth.passActive() ? ' · pass until ' + PBAuth.passUntil().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-    const bank = p && p.hours_balance ? p.hours_balance + ' h ready' : 'no time left';
-    $('accInfo').textContent = (p ? (PBAuth.passActive() ? '' : bank) : '…') + pass;
+    const until = PBAuth.passActive() ? PBAuth.passUntil() : null;
+    const fmtUntil = (d) => { const sameDay = d.toDateString() === new Date().toDateString();
+      return (sameDay ? '' : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ') + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+    const pill = $('accInfo');
+    pill.classList.toggle('on', !!until);
+    pill.textContent = !p ? 'Loading…' : until ? 'Pass until ' + fmtUntil(until) : (p.hours_balance ? p.hours_balance + ' h ready to use' : 'No scoring time');
     const av = (p && p.avatar_url) || (u.user_metadata && u.user_metadata.avatar_url);
     if (av) $('accAvatar').src = av;
   }
@@ -344,6 +347,7 @@
       const k = seg.dataset.k;
       seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(draft[k]) === b.dataset.v));
     });
+    $('dotA').style.background = draft.colors[0]; $('dotB').style.background = draft.colors[1];
     [['swA', 0], ['swB', 1]].forEach(([id, t]) => $(id).querySelectorAll('.sw').forEach((b) => {
       const c = b.dataset.c.toLowerCase();
       b.classList.toggle('on', c === String(draft.colors[t]).toLowerCase());
@@ -451,4 +455,6 @@
   PBCommon.installButton($('installApp2'), { onHelp: (h) => { alert(h); } });
   /* Count this phone in the lobby's "online now" status */
   PBAuth.live('p-' + device.slice(0, 12), { r: 'phone' }, () => {}).catch(() => {});
+  /* Match setup: show a divider under the title once the sheet scrolls */
+  (function () { const sh = document.querySelector('#sheet .sheet'); if (sh) sh.addEventListener('scroll', () => sh.classList.toggle('scrolled', sh.scrollTop > 4), { passive: true }); })();
 })();

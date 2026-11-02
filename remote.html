@@ -84,41 +84,58 @@
 
 <!-- Settings sheet -->
 <div class="sheet-wrap hidden" id="sheet">
-  <div class="sheet" role="dialog" aria-label="Match settings">
-    <h2>Match setup <button class="close-x" id="sheetX" aria-label="Close">×</button></h2>
+  <div class="sheet setup" role="dialog" aria-label="Match setup">
+    <div class="sheet-grab" aria-hidden="true"></div>
+    <header class="sheet-head">
+      <h2>Match setup</h2>
+      <button class="close-x" id="sheetX" aria-label="Close">×</button>
+    </header>
+
     <div class="account hidden" id="account">
-      <img id="accAvatar" alt="">
-      <div><b id="accName"></b><span id="accInfo"></span></div>
-      <div style="display:flex;gap:6px"><button class="mini-btn" id="accBuy">Donate</button><button class="mini-btn" id="accOut">Sign out</button></div>
-    </div>
-    <div class="field">
-      <span class="eyebrow">Teams</span>
-      <div class="team-edit">
-        <input class="text-in" id="nA" maxlength="18" placeholder="Team name">
-        <div class="player-row"><input class="text-in" id="pA0" maxlength="16" placeholder="Player 1"><input class="text-in pl2" id="pA1" maxlength="16" placeholder="Player 2"></div>
-        <div class="swatches" id="swA"></div>
-        <button class="mini-btn dbl-only" id="ptA">⇄ Swap court positions</button>
+      <div class="acc-top">
+        <img id="accAvatar" alt="">
+        <div class="acc-id"><b id="accName"></b><span class="acc-pill" id="accInfo"></span></div>
       </div>
-      <div class="team-edit">
-        <input class="text-in" id="nB" maxlength="18" placeholder="Team name">
-        <div class="player-row"><input class="text-in" id="pB0" maxlength="16" placeholder="Player 1"><input class="text-in pl2" id="pB1" maxlength="16" placeholder="Player 2"></div>
-        <div class="swatches" id="swB"></div>
-        <button class="mini-btn dbl-only" id="ptB">⇄ Swap court positions</button>
+      <div class="acc-btns"><button class="mini-btn" id="accBuy">Donate</button><button class="mini-btn" id="accOut">Sign out</button></div>
+    </div>
+
+    <section class="setup-sec">
+      <h3 class="sec-title">Teams</h3>
+      <div class="team-edit" data-team="0">
+        <div class="team-edit-head"><span class="team-dot" id="dotA"></span><input class="text-in team-in" id="nA" maxlength="18" placeholder="Team name" aria-label="Team A name"></div>
+        <div class="player-row"><input class="text-in" id="pA0" maxlength="16" placeholder="Player 1" aria-label="Team A player 1"><input class="text-in pl2" id="pA1" maxlength="16" placeholder="Player 2" aria-label="Team A player 2"></div>
+        <div class="swatches" id="swA" role="group" aria-label="Team A color"></div>
+        <button class="mini-btn swap-btn dbl-only" id="ptA">⇄ Swap court positions</button>
       </div>
-      <button class="big-btn ghost" id="applyNames">Update names &amp; colors</button>
-    </div>
-    <div class="field"><span class="eyebrow">Format</span><div class="seg" data-k="mode"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div></div>
-    <div class="field"><span class="eyebrow">Scoring</span><div class="seg" data-k="scoring"><button data-v="sideout">Side-out</button><button data-v="rally">Rally</button></div></div>
-    <div class="field"><span class="eyebrow">Points to win (win by 2)</span><div class="seg" data-k="target"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div>
-    <div class="field"><span class="eyebrow">Games</span><div class="seg" data-k="bestOf"><button data-v="1">1 game</button><button data-v="3">Best of 3</button><button data-v="5">Best of 5</button></div></div>
-    <div class="field"><span class="eyebrow">First serve</span><div class="seg" data-k="firstServer"><button data-v="0" id="fs0">A</button><button data-v="1" id="fs1">B</button></div></div>
-    <div class="sheet-actions">
-      <button class="big-btn ghost" id="unpair">Exit scoreboard</button>
-      <button class="big-btn ghost" id="toDisplay" style="grid-column:1/-1">Use this device as the scoreboard</button>
-      <button class="big-btn ghost hidden" id="installApp2" style="grid-column:1/-1">Install the app on this phone</button>
-      <button class="big-btn" id="newMatch">Start new match</button>
-    </div>
-    <p class="note">Player 1 starts in the right-hand court. Names and colors update without resetting the score; “Swap court positions” fixes the scoreboard if partners lined up the other way. Starting a new match resets the score.</p>
+      <div class="team-edit" data-team="1">
+        <div class="team-edit-head"><span class="team-dot" id="dotB"></span><input class="text-in team-in" id="nB" maxlength="18" placeholder="Team name" aria-label="Team B name"></div>
+        <div class="player-row"><input class="text-in" id="pB0" maxlength="16" placeholder="Player 1" aria-label="Team B player 1"><input class="text-in pl2" id="pB1" maxlength="16" placeholder="Player 2" aria-label="Team B player 2"></div>
+        <div class="swatches" id="swB" role="group" aria-label="Team B color"></div>
+        <button class="mini-btn swap-btn dbl-only" id="ptB">⇄ Swap court positions</button>
+      </div>
+      <button class="big-btn wide cyan" id="applyNames">Update names &amp; colors</button>
+      <p class="hint-sm">Names and colors update without resetting the score. Player 1 starts in the right-hand court.</p>
+    </section>
+
+    <section class="setup-sec">
+      <h3 class="sec-title">Match rules</h3>
+      <div class="field"><span class="eyebrow">Format</span><div class="seg" data-k="mode"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div></div>
+      <div class="field"><span class="eyebrow">Scoring</span><div class="seg" data-k="scoring"><button data-v="sideout">Side-out</button><button data-v="rally">Rally</button></div></div>
+      <div class="field"><span class="eyebrow">Points to win · win by 2</span><div class="seg" data-k="target"><button data-v="11">11</button><button data-v="15">15</button><button data-v="21">21</button></div></div>
+      <div class="field"><span class="eyebrow">Games</span><div class="seg" data-k="bestOf"><button data-v="1">1 game</button><button data-v="3">Best of 3</button><button data-v="5">Best of 5</button></div></div>
+      <div class="field"><span class="eyebrow">First serve</span><div class="seg" data-k="firstServer"><button data-v="0" id="fs0">A</button><button data-v="1" id="fs1">B</button></div></div>
+      <button class="big-btn wide" id="newMatch">Start new match</button>
+      <p class="hint-sm">Starting a new match resets the score to 0–0.</p>
+    </section>
+
+    <section class="setup-sec">
+      <h3 class="sec-title">This device</h3>
+      <div class="sheet-actions">
+        <button class="act-btn" id="toDisplay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span>Use as scoreboard</span></button>
+        <button class="act-btn danger" id="unpair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg><span>Exit scoreboard</span></button>
+        <button class="act-btn hidden" id="installApp2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Install the app</span></button>
+      </div>
+    </section>
   </div>
 </div>
 
